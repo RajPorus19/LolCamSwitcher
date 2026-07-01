@@ -3,6 +3,15 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.0] - 2026-07-01
+
+### Added
+
+- Extended `EventType` coverage: triple/quadra/penta, first blood, ace, dragon/baron/herald, turret, inhibitor
+- Full Riot Live Client `eventdata` mapping including assists from `ChampionKill`
+- Heuristic detection for `engage` (combat spike) and `farm` (CS spike)
+- Unit tests for Riot event mapping (`tests/test_api_mapping.py`)
+
 ## [1.0.0] - 2026-07-01
 
 ### Added
@@ -19,4 +28,5 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 - CLI probe script `scripts/test_live_events.py`
 - Windows `.exe` build via PyInstaller (`build.bat`, GitHub Actions release)
 
+[1.1.0]: https://github.com/RajPorus19/LolCamSwitcher/releases/tag/v1.1.0
 [1.0.0]: https://github.com/RajPorus19/LolCamSwitcher/releases/tag/v1.0.0

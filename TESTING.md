@@ -133,10 +133,18 @@ Vérifie uniquement :
 
 | Action in-game | Event attendu |
 |----------------|---------------|
-| Prendre des dégâts (sbires / tourelle) | `combat_nearby` |
+| Prendre des dégâts (sbires / tourelle) | `combat_nearby`, `engage` |
 | Descendre sous ~25 % HP | `low_hp` |
 | Mourir | `death` |
-| Kill un bot (activer des bots dans Practice Tool) | `kill` |
+| Kill un champion | `kill` (+ `assist` pour coéquipier A/B) |
+| Multikill | `double_kill`, `triple_kill`, `quadra_kill`, `penta_kill` |
+| First blood | `first_blood` |
+| Kill bot (Practice Tool) | `kill` |
+| Farm gros spike CS | `farm` |
+| Dragon / Baron / Herald | `dragon`, `baron`, `herald` |
+| Tourelle / first brick | `turret`, `first_turret` |
+| Inhibiteur | `inhibitor` |
+| Ace | `ace` |
 
 Si **Dernier événement** bouge → la détection live est **validée**. Tu peux fermer l’app.
 
