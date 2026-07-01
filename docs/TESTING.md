@@ -2,13 +2,13 @@
 
 Ce document sert **uniquement** à vérifier que le **client** détecte les **actions en live** via l'API Riot Live Client.
 
-> Utilise **`LoLAutoDirectorClient.exe`** (Windows) ou `python client_main.py` — **pas besoin de serveur Docker ni de stream**.
+> Utilise **`LolCamSwitcherClient.exe`** (Windows) ou `python client_main.py` — **pas besoin de serveur Docker ni de stream**.
 
 ## Ce qu'il faut / ce qu'il ne faut pas
 
 | Requis | Pas requis |
 |--------|------------|
-| Windows + **`LoLAutoDirectorClient.exe`** (ou Python) | **Serveur VPS / Docker** |
+| Windows + **`LolCamSwitcherClient.exe`** (ou Python) | **Serveur VPS / Docker** |
 | League of Legends lancé | **OBS régie** |
 | Être **en partie** (Practice Tool suffit) | **Stream Twitch / RTMP** |
 | | **Token API**, **relay serveur** |
@@ -115,7 +115,7 @@ Ctrl+C pour arrêter.
 
 ### Test 3 — Client `.exe` (sans serveur)
 
-1. Télécharge **`LoLAutoDirectorClient.exe`** depuis [Releases](https://github.com/RajPorus19/LolCamSwitcher/releases)  
+1. Télécharge **`LolCamSwitcherClient.exe`** depuis [Releases](https://github.com/RajPorus19/LolCamSwitcher/releases)  
    *ou* `python client_main.py`
 2. Renseigne **Slot** (A ou B) + **Pseudo Riot**
 3. **Ne coche pas** « Relayer vers le serveur »
@@ -197,7 +197,7 @@ Pour le setup production (serveur, token, OBS RTMP) → **[SETUP.md](SETUP.md)**
 | `OBS ✗` en statut | OBS non lancé | **Normal pour ce test — ignore** |
 | exe ne voit pas LoL | Pas le même PC | LoL et l’exe sur **la même machine** |
 | `eventdata` vide | Début de partie | Joue 1–2 min, provoque des actions |
-| Antivirus bloque l'exe | PyInstaller | Exception pour `LoLAutoDirectorClient.exe` |
+| Antivirus bloque l'exe | PyInstaller | Exception pour `LolCamSwitcherClient.exe` |
 
 ---
 
@@ -232,14 +232,14 @@ Ne remplace pas les tests live ci-dessus — ne touche pas à l’API Riot.
 Chaque partie génère un fichier :
 
 ```
-%LOCALAPPDATA%\LoLAutoDirector\logs\game_2026-07-01_143052.log
+%LOCALAPPDATA%\LolCamSwitcher\logs\game_2026-07-01_143052.log
 ```
 
 Exemple de lignes :
 
 ```
 [2026-07-01 14:30:52] [GAME 02:15] EVENT        Player A — kill (+100) | target PLAYER_A | focus 02:12→02:27 | pre-delay -3s
-[2026-07-01 14:30:52] [GAME 02:12] FOCUS        Director focus → PLAYER_A (trigger=event)
+[2026-07-01 14:30:52] [GAME 02:12] FOCUS        FOCUS PLAYER_A | Reason: KILL
 [2026-07-01 14:30:52] [GAME 02:12] CAMERA       Camera switched to PLAYER_A (scene: PLAYER_A) at game time 02:12 [event]
 ```
 
@@ -255,7 +255,7 @@ Practice Tool (LoL) — PC Windows
        │  API locale 127.0.0.1:2999
        ▼
 ┌──────────────────────────┐
-│  LoLAutoDirectorClient   │  ← events en direct (standalone)
+│  LolCamSwitcherClient   │  ← events en direct (standalone)
 │  .exe ou client_main.py  │
 └──────────────────────────┘
        │

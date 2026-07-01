@@ -7,7 +7,7 @@ build/
 venv/
 *.spec.bak
 .pytest_cache/
-LoLAutoDirector.exe
-LoLAutoDirectorClient.exe
+LolCamSwitcher.exe
+LolCamSwitcherClient.exe
 .env
 site/

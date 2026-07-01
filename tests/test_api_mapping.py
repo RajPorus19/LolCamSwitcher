@@ -1,7 +1,7 @@
 """Unit tests for Riot event mapping."""
 
-from lol_auto_director.lol.api import RiotLiveClientAPI
-from lol_auto_director.lol.events import EventType, multikill_type
+from lol_cam_switcher.lol.api import RiotLiveClientAPI
+from lol_cam_switcher.lol.events import EventType, multikill_type
 
 
 def _api() -> RiotLiveClientAPI:

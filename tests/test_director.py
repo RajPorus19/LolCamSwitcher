@@ -2,16 +2,16 @@
 
 import pytest
 
-from lol_auto_director.director.priority import FocusTarget, choose_focus, detect_split_screen
-from lol_auto_director.director.scoring import ScoreBoard
-from lol_auto_director.director.strategy import (
+from lol_cam_switcher.director.priority import FocusTarget, choose_focus, detect_split_screen
+from lol_cam_switcher.director.scoring import ScoreBoard
+from lol_cam_switcher.director.strategy import (
     SwitchStrategy,
     resolve_focus_for_event,
     resolve_idle_focus,
     StrategyState,
 )
-from lol_auto_director.director.timeline import DirectorTimeline, FocusDecision
-from lol_auto_director.lol.events import EventType, GameEvent
+from lol_cam_switcher.director.timeline import DirectorTimeline, FocusDecision
+from lol_cam_switcher.lol.events import EventType, GameEvent
 
 
 def _event(type_: EventType, player: str, time: float) -> GameEvent:

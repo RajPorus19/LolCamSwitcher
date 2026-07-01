@@ -1,4 +1,4 @@
-# LoL Auto Director
+# LolCamSwitcher
 
 Régie automatique pour broadcast **League of Legends dual-POV** (joueur A + joueur B).
 
@@ -25,7 +25,7 @@ PC Joueur A (Windows)          PC Joueur B (Windows)
 
 | Composant | OS | Rôle |
 |-----------|-----|------|
-| **LoLAutoDirectorClient.exe** | Windows | Events LoL + relay vers le VPS |
+| **LolCamSwitcherClient.exe** | Windows | Events LoL + relay vers le VPS |
 | **OBS joueur** | Windows | Capture POV → RTMP vers le VPS |
 | **director + nginx-rtmp + Caddy** | Linux (Docker) | API, ingest vidéo, régie |
 | **OBS régie** | Linux | Switch caméra + stream Twitch |
@@ -45,7 +45,7 @@ docker compose up -d
 
 ### 2. Clients (Windows)
 
-Télécharge **[LoLAutoDirectorClient.exe](https://github.com/RajPorus19/LolCamSwitcher/releases)** et configure slot A/B + token.
+Télécharge **[LolCamSwitcherClient.exe](https://github.com/RajPorus19/LolCamSwitcher/releases)** et configure slot A/B + token.
 
 ### 3. OBS joueurs
 

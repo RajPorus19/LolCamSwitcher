@@ -3,9 +3,9 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "lol-auto-director"
+name = "lol-cam-switcher"
 version = "1.4.0"
-description = "LoL dual-POV auto director: Windows client agents relay live events; Linux Docker server (nginx-rtmp + API + OBS regie) for Twitch broadcast"
+description = "LolCamSwitcher — LoL dual-POV regie: Windows client agents relay live events; Linux Docker server (nginx-rtmp + API + OBS) for Twitch broadcast"
 requires-python = ">=3.10"
 dependencies = [
     "obsws-python>=1.7.0",
@@ -17,9 +17,9 @@ dependencies = [
 ]
 
 [project.scripts]
-lol-auto-director = "main:main"
-lol-director-server = "server_main:main"
-lol-director-client = "client_main:main"
+lol-cam-switcher = "main:main"
+lol-cam-switcher-server = "server_main:main"
+lol-cam-switcher-client = "client_main:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

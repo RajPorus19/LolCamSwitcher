@@ -30,14 +30,14 @@ jobs:
 
       - name: Verify executables
         run: |
-          if (-Not (Test-Path "dist\LoLAutoDirector.exe")) { Write-Error "Director exe missing"; exit 1 }
-          if (-Not (Test-Path "dist\LoLAutoDirectorClient.exe")) { Write-Error "Client exe missing"; exit 1 }
+          if (-Not (Test-Path "dist\LolCamSwitcher.exe")) { Write-Error "LolCamSwitcher exe missing"; exit 1 }
+          if (-Not (Test-Path "dist\LolCamSwitcherClient.exe")) { Write-Error "Client exe missing"; exit 1 }
           Get-ChildItem dist\*.exe | Format-List Name, Length
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/LoLAutoDirector.exe
-            dist/LoLAutoDirectorClient.exe
+            dist/LolCamSwitcher.exe
+            dist/LolCamSwitcherClient.exe
           generate_release_notes: true

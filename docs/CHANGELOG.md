@@ -11,7 +11,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 - Optional OBS headless container (`docker compose --profile full`)
 - Server env config: `OBS_ENABLED`, `REQUIRE_API_TOKEN`, `LOGS_DIR`
 - `--no-obs` CLI flag for API-only server mode
-- **Windows client-only** build: `build-client.spec` → `LoLAutoDirectorClient.exe`
+- **Windows client-only** build: `build-client.spec` → `LolCamSwitcherClient.exe`
 - [DOCKER.md](DOCKER.md) deployment guide
 
 ## [1.3.0] - 2026-07-01
@@ -29,7 +29,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 - Per-game session logs (`game_YYYY-MM-DD_HHMMSS.log`) with events, focus decisions, and camera switches
 - Live log viewer in GUI with past log file picker and open-folder button
-- Logs stored in `%LOCALAPPDATA%\\LoLAutoDirector\\logs` (Windows)
+- Logs stored in `%LOCALAPPDATA%\\LolCamSwitcher\\logs` (Windows)
 
 ## [1.1.0] - 2026-07-01
 
@@ -44,7 +44,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
-- LoL Auto Director GUI (PySide6) for Windows
+- LolCamSwitcher GUI (PySide6) for Windows
 - Riot Live Client Data API integration (Vanguard-safe, no memory access)
 - OBS WebSocket v5 scene switching (`PLAYER_A`, `PLAYER_B`, `SPLIT`)
 - Event buffer with configurable pre-event delay (instant replay offset)

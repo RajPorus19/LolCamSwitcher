@@ -1,6 +1,6 @@
-# LoL Auto Director — Linux regie stack (VPS)
+# LolCamSwitcher — Linux regie stack (VPS)
 #
-# Clients Windows : LoLAutoDirectorClient.exe (build-client.bat)
+# Clients Windows : LolCamSwitcherClient.exe (build-client.bat)
 # Serveur Linux   : docker compose up -d
 #
 # Quick start:

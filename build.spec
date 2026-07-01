@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec for LoL Auto Director (Windows .exe)."""
+"""PyInstaller spec for LolCamSwitcher (Windows .exe)."""
 
 block_cipher = None
 
@@ -36,7 +36,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='LoLAutoDirector',
+    name='LolCamSwitcher',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

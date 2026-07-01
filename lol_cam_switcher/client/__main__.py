@@ -1,4 +1,6 @@
-"""LolCamSwitcher — entry point."""
+"""Client agent entry point."""
+
+from __future__ import annotations
 
 import logging
 import sys
@@ -9,9 +11,9 @@ def main() -> int:
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
-    from lol_cam_switcher.gui.app import run_app
+    from lol_cam_switcher.client.gui import run_client
 
-    return run_app()
+    return run_client()
 
 
 if __name__ == "__main__":

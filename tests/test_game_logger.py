@@ -3,10 +3,10 @@
 import tempfile
 from pathlib import Path
 
-from lol_auto_director.director.priority import FocusTarget
-from lol_auto_director.director.timeline import FocusDecision
-from lol_auto_director.lol.events import EventType, GameEvent
-from lol_auto_director.session_log.game_logger import GameSessionLogger, format_game_time
+from lol_cam_switcher.director.priority import FocusTarget
+from lol_cam_switcher.director.timeline import FocusDecision
+from lol_cam_switcher.lol.events import EventType, GameEvent
+from lol_cam_switcher.session_log.game_logger import GameSessionLogger, format_game_time
 
 
 def test_format_game_time():

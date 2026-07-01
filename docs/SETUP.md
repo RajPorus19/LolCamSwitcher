@@ -7,7 +7,7 @@ Ce document répond aux questions concrètes après déploiement du serveur :
 - **Quels réglages OBS** pour envoyer la vidéo vers le VPS ?
 - **Comment l'OBS régie** récupère les deux POV et stream sur Twitch ?
 
-> Architecture : clients Windows (`LoLAutoDirectorClient.exe`) + serveur Linux Docker.  
+> Architecture : clients Windows (`LolCamSwitcherClient.exe`) + serveur Linux Docker.  
 > Schémas détaillés : [CLIENT_SERVER.md](CLIENT_SERVER.md) · Docker : [DOCKER.md](DOCKER.md)
 
 ---
@@ -77,7 +77,7 @@ LOL_DIRECTOR_API_TOKEN=K7mP9xR2vN4wQ8sT1uY6zA3bC5dE0fG
 |----------|---------|
 | Où le récupérer après deploy ? | `cat .env` sur le VPS (variable `LOL_DIRECTOR_API_TOKEN`) |
 | Un token par joueur ? | **Non** — un seul token partagé par tous les clients |
-| Où le mettre côté joueur ? | Champ **Token API** dans `LoLAutoDirectorClient.exe` |
+| Où le mettre côté joueur ? | Champ **Token API** dans `LolCamSwitcherClient.exe` |
 | Format HTTP | Header `Authorization: Bearer K7mP9xR2vN4wQ8sT1uY6zA3bC5dE0fG` |
 | Token perdu ? | Regénère une nouvelle valeur dans `.env` puis `docker compose up -d` — mets à jour tous les clients |
 
@@ -165,7 +165,7 @@ Remplace `203.0.113.50` par ton IP ou domaine, et `TOKEN` par ta valeur `.env`.
 
 | Composant | Réglage |
 |-----------|---------|
-| **LoLAutoDirectorClient.exe** | |
+| **LolCamSwitcherClient.exe** | |
 | Slot | `Joueur A` |
 | Pseudo Riot | Nom **exact** in-game (voir `https://127.0.0.1:2999/liveclientdata/playerlist`) |
 | Relayer vers le serveur | ✓ coché |
@@ -244,7 +244,7 @@ docker compose logs rtmp
 
 ## Étape 6 — Client Windows : events vers le serveur
 
-1. Télécharger **`LoLAutoDirectorClient.exe`** ([Releases](https://github.com/RajPorus19/LolCamSwitcher/releases))
+1. Télécharger **`LolCamSwitcherClient.exe`** ([Releases](https://github.com/RajPorus19/LolCamSwitcher/releases))
 2. Remplir la fiche joueur (étape 4)
 3. Cliquer **Tester connexion serveur** → barre de statut `Serveur OK — token valide`
 4. Lancer une partie LoL (Practice Tool OK)

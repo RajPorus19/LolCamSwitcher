@@ -4,8 +4,8 @@ import time
 
 import pytest
 
-from lol_auto_director.lol.events import EventType
-from lol_auto_director.server.hub import RemoteEventHub
+from lol_cam_switcher.lol.events import EventType
+from lol_cam_switcher.server.hub import RemoteEventHub
 
 
 def test_ingest_and_poll():

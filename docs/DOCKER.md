@@ -3,7 +3,7 @@
 Stack de production pour la **régie centrale**.
 
 > **Guide pas-à-pas** (token, OBS joueur, fiches A/B) : **[SETUP.md](SETUP.md)**  
-> Les **clients Windows** (`LoLAutoDirectorClient.exe`) tournent sur les PC joueurs.  
+> Les **clients Windows** (`LolCamSwitcherClient.exe`) tournent sur les PC joueurs.  
 > Ce compose **ne contient pas** le client — uniquement le serveur.
 
 ## Architecture Docker
@@ -68,7 +68,7 @@ curl -H "Authorization: Bearer VOTRE_TOKEN" http://localhost/api/v1/status
 ### Events (HTTP)
 
 ```
-LoLAutoDirectorClient.exe (Windows)
+LolCamSwitcherClient.exe (Windows)
   → POST https://VPS/api/v1/events
   → Authorization: Bearer TOKEN
   → director → régie → OBS switch (si OBS_ENABLED=true)
@@ -151,7 +151,7 @@ Sur une machine Windows :
 
 ```bat
 build-client.bat
-→ dist\LoLAutoDirectorClient.exe
+→ dist\LolCamSwitcherClient.exe
 ```
 
 Variables : voir [`.env.example`](https://github.com/RajPorus19/LolCamSwitcher/blob/main/.env.example) sur GitHub.

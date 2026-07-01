@@ -1,5 +1,5 @@
 @echo off
-REM Build LoL Auto Director as Windows .exe
+REM Build LolCamSwitcher as Windows .exe
 REM Requires: Python 3.10+, pip install -r requirements.txt
 
 echo Installing dependencies...
@@ -9,5 +9,5 @@ echo Building executable...
 pyinstaller build.spec --noconfirm
 
 echo.
-echo Done! Executable: dist\LoLAutoDirector.exe
+echo Done! Executable: dist\LolCamSwitcher.exe
 pause

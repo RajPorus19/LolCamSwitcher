@@ -17,5 +17,5 @@ build.spec
 build.bat
 build-client.spec
 build-client.bat
-lol_auto_director/gui/
-lol_auto_director/client/
+lol_cam_switcher/gui/
+lol_cam_switcher/client/

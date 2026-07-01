@@ -1,4 +1,4 @@
-# Reverse proxy — LoL Auto Director API
+# Reverse proxy — LolCamSwitcher API
 # Clients connect here (port 80/443) instead of :8750 directly.
 
 :80 {

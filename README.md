@@ -1,4 +1,4 @@
-# LoL Auto Director
+# LolCamSwitcher
 
 Régie automatique pour broadcast **League of Legends dual-POV** (joueur A + joueur B).
 
@@ -15,7 +15,7 @@ Le système détecte les events live (kills, objectifs, combats…) et commande 
 │   PC JOUEUR A  (Windows)     │       │   PC JOUEUR B  (Windows)     │
 │                              │       │                              │
 │  LoL                         │       │  LoL                         │
-│  LoLAutoDirectorClient.exe   │       │  LoLAutoDirectorClient.exe   │
+│  LolCamSwitcherClient.exe   │       │  LolCamSwitcherClient.exe   │
 │    └─ events locaux (LoL API)│       │    └─ events locaux          │
 │    └─ relay HTTPS ───────────┼───┐   │    └─ relay HTTPS ───────────┼───┐
 │                              │   │   │                              │   │
@@ -46,7 +46,7 @@ Le système détecte les events live (kills, objectifs, combats…) et commande 
 
 | Composant | OS | Rôle |
 |-----------|-----|------|
-| **LoLAutoDirectorClient.exe** | Windows | Lit l'API LoL locale · affiche events · relay vers VPS |
+| **LolCamSwitcherClient.exe** | Windows | Lit l'API LoL locale · affiche events · relay vers VPS |
 | **OBS joueur** | Windows | Capture POV → push RTMP vers le VPS |
 | **director** (Docker) | Linux | API + régie (scores, stratégies, logs) |
 | **nginx-rtmp** (Docker) | Linux | Ingest 2 flux vidéo |
@@ -74,7 +74,7 @@ docker compose up -d
 
 → Fiches détaillées joueur A/B, token, OBS : **[docs/SETUP.md](docs/SETUP.md)** (étapes 4–6)
 
-Télécharger **`LoLAutoDirectorClient.exe`** depuis [Releases](https://github.com/RajPorus19/LolCamSwitcher/releases) ou :
+Télécharger **`LolCamSwitcherClient.exe`** depuis [Releases](https://github.com/RajPorus19/LolCamSwitcher/releases) ou :
 
 ```bat
 build-client.bat
@@ -100,15 +100,15 @@ build-client.bat
 
 | Mode | Commande | Usage |
 |------|----------|-------|
-| **Client agent** | `LoLAutoDirectorClient.exe` | PC joueur — events + relay |
+| **Client agent** | `LolCamSwitcherClient.exe` | PC joueur — events + relay |
 | **Serveur Docker** | `docker compose up -d` | VPS Linux — régie + RTMP |
-| **Director GUI** (legacy) | `LoLAutoDirector.exe` / `main.py` | Tout-en-un local Windows |
+| **GUI locale** (legacy) | `LolCamSwitcher.exe` / `main.py` | Tout-en-un local Windows |
 
 | Mode client | Serveur | Stream Twitch |
 |-------------|---------|---------------|
 | Client standalone | ✗ | ✗ (events only) |
 | Client + serveur Docker | ✓ | ✓ |
-| Director GUI local | local | ✓ (1 machine) |
+| GUI locale | local | ✓ (1 machine) |
 
 ---
 
@@ -156,8 +156,8 @@ python scripts/test_live_events.py --player-a "TonPseudo" --watch
 
 | Script | Produit | Cible |
 |--------|---------|-------|
-| `build-client.bat` | `LoLAutoDirectorClient.exe` | **PC joueurs** |
-| `build.bat` | `LoLAutoDirector.exe` | Director GUI local (legacy) |
+| `build-client.bat` | `LolCamSwitcherClient.exe` | **PC joueurs** |
+| `build.bat` | `LolCamSwitcher.exe` | GUI locale (legacy) |
 
 Le **serveur** tourne sous **Docker/Linux** — pas de `.exe` serveur.
 
@@ -166,7 +166,7 @@ Le **serveur** tourne sous **Docker/Linux** — pas de `.exe` serveur.
 ## Structure du projet
 
 ```
-lol_auto_director/
+lol_cam_switcher/
 ├── client/          # agent Windows (events + relay)
 ├── server/          # API FastAPI (Linux)
 ├── director/        # scoring, stratégies, timeline
@@ -203,4 +203,4 @@ main.py              # entry legacy GUI
 
 Version actuelle : **1.4.0** — voir [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
-Assets : `LoLAutoDirectorClient.exe` (joueurs) · `LoLAutoDirector.exe` (legacy).
+Assets : `LolCamSwitcherClient.exe` (joueurs) · `LolCamSwitcher.exe` (legacy).

@@ -9,7 +9,7 @@ Guide setup pour l'architecture **distribuée** : clients Windows + serveur Linu
 ```
 ┌──────────────── PC JOUEUR A (Windows) ─────────────────┐
 │  LoL  ←── Riot Live Client API (127.0.0.1:2999)        │
-│  LoLAutoDirectorClient.exe                             │
+│  LolCamSwitcherClient.exe                             │
 │    • mode standalone : events visibles en local        │
 │    • mode relay : POST events + heartbeat ─────────────┼──┐
 │  OBS ── RTMP ──────────────────────────────────────────┼──┼──┐
@@ -118,7 +118,7 @@ curl -H "Authorization: Bearer TOKEN" http://VPS/api/v1/status
 ### Standalone (sans serveur, sans stream)
 
 ```
-LoLAutoDirectorClient.exe
+LolCamSwitcherClient.exe
   → Slot A ou B + pseudo Riot
   → Démarrer
   → events live dans la fenêtre (LoL ✓)
@@ -192,4 +192,4 @@ WebSocket OBS v5 — port 4455, mot de passe = `OBS_PASSWORD` dans `.env`.
 | Stream Twitch | ✗ | ✓ | ✓ |
 | LoL spectateur sur régie | ✗ | ✗ | requis |
 
-Legacy = `LoLAutoDirector.exe` / `main.py` (tout sur une machine).
+Legacy = `LolCamSwitcher.exe` / `main.py` (tout sur une machine).

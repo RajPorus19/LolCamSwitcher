@@ -16,8 +16,8 @@ from pathlib import Path
 # Allow running from repo root without install
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from lol_auto_director.lol.api import RiotLiveClientAPI
-from lol_auto_director.lol.events import GameEvent
+from lol_cam_switcher.lol.api import RiotLiveClientAPI
+from lol_cam_switcher.lol.events import GameEvent
 
 
 def check_api(api: RiotLiveClientAPI) -> bool:
@@ -94,7 +94,7 @@ def main() -> int:
     parser.add_argument("--interval", type=float, default=1.0, help="Intervalle watch (s)")
     args = parser.parse_args()
 
-    print("LoL Auto Director — test Live Client API")
+    print("LolCamSwitcher — test Live Client API")
     print("=" * 44)
 
     api = RiotLiveClientAPI(
