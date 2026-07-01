@@ -12,7 +12,8 @@ RUN pip install --no-cache-dir -r /tmp/requirements-server.txt
 COPY lol_cam_switcher/ /app/lol_cam_switcher/
 COPY server_main.py /app/server_main.py
 COPY docker/director/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY docker/director/load-env.py /load-env.py
+RUN chmod +x /entrypoint.sh /load-env.py
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app \
