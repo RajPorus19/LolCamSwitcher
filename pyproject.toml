@@ -4,17 +4,22 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lol-auto-director"
-version = "1.2.0"
+version = "1.3.0"
 description = "Automatic camera director for two-player League of Legends broadcasts"
 requires-python = ">=3.10"
 dependencies = [
     "obsws-python>=1.7.0",
     "PySide6>=6.6.0",
     "requests>=2.31.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.0.0",
 ]
 
 [project.scripts]
 lol-auto-director = "main:main"
+lol-director-server = "server_main:main"
+lol-director-client = "client_main:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

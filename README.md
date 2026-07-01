@@ -61,10 +61,28 @@ Les joueurs **n’envoient pas** leur flux directement sur la chaîne finale (sa
 - **Windows** sur la machine régie (le .exe est prévu pour Windows)
 - **Python 3.10+** si lancement en source (`pip install -r requirements.txt`)
 - **OBS Studio** sur la machine régie (WebSocket v5 activé)
-- **League of Legends** sur la machine régie en mode **spectateur** de la même partie *(voir section API ci-dessous)*
+- **League of Legends** sur chaque PC joueur (client agent) ou spectateur sur la régie (mode legacy)
 - Un moyen d’**ingérer les 2 flux vidéo** des joueurs dans l’OBS central
 
 ---
+
+## Architecture client / serveur (recommandée)
+
+| Composant | Commande | Où |
+|-----------|----------|-----|
+| **Client agent** | `python client_main.py` | PC joueur A et B |
+| **Serveur régie** | `python server_main.py` | VPS / machine régie |
+| **Director GUI** (legacy) | `python main.py` | Tout-en-un local |
+
+Le **client** lit l’API LoL locale, affiche les events (**standalone**, sans serveur), et peut **relayer** vers le serveur avec un token Bearer.
+
+Le **serveur** agrège les events A+B, pilote OBS central, stream Twitch.
+
+Voir **[CLIENT_SERVER.md](CLIENT_SERVER.md)** pour le setup détaillé (token, API, VPS).
+
+---
+
+## Mode legacy : API locale sur la régie
 
 ## Limitation actuelle : API événements LoL
 
@@ -80,13 +98,9 @@ Cette API n’est accessible que sur **le PC où tourne un client LoL connecté 
 
 | Situation | Fonctionne ? |
 |-----------|--------------|
-| Les 2 joueurs + régie sur le même PC | Oui (peu réaliste) |
-| Régie + **client LoL spectateur** de la même game | **Oui — setup recommandé** |
-| Régie sans client LoL, joueurs distants seulement | **Non** (événements indisponibles) |
-
-**Setup recommandé** : sur la **machine régie**, lancer LoL et **spectate la partie** (ou être dans la même custom game avec le client ouvert). L’API locale remonte alors tous les événements (kills, dragons, etc.) avec les noms des invocateurs. Vous renseignez ces noms dans l’interface pour identifier A et B.
-
-> Une future version pourra ajouter un **agent léger** sur chaque PC joueur qui relaie les événements vers la régie. Ce n’est pas encore implémenté.
+| **Client agent** sur chaque PC + serveur VPS | **Oui — recommandé** |
+| Régie + **client LoL spectateur** de la même game | Oui (legacy) |
+| Régie sans client LoL, joueurs distants seulement | Non |
 
 ---
 

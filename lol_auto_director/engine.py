@@ -1,4 +1,4 @@
-"""Main orchestration engine — ties LoL API, director, and OBS together."""
+"""Refactored director engine with pluggable event source."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Callable
 
 from lol_auto_director.buffer.recorder import ReplayRecorder
+from lol_auto_director.common.event_source import EventSource
 from lol_auto_director.config import AppConfig
 from lol_auto_director.director.priority import FocusTarget
 from lol_auto_director.director.strategy import SwitchStrategy
@@ -23,14 +24,16 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class DirectorEngine:
-    """Background engine polling Riot API and driving OBS scene switches."""
+    """Background engine polling an event source and driving OBS scene switches."""
 
     config: AppConfig = field(default_factory=AppConfig)
+    event_source: EventSource | None = None
     on_state_changed: Callable[[], None] | None = None
     on_log_line: Callable[[str], None] | None = None
+    enable_obs: bool = True
 
     recorder: ReplayRecorder = field(init=False)
-    riot_api: RiotLiveClientAPI = field(init=False)
+    source: EventSource = field(init=False)
     obs: OBSController = field(init=False)
     game_log: GameSessionLogger = field(init=False)
 
@@ -49,11 +52,16 @@ class DirectorEngine:
         self.recorder.director.switch_strategy = self.config.switch_strategy
         self.recorder.director.main_player = self.config.main_player
         self.recorder.director.strategy_state.main_player = self.config.main_player
-        self.riot_api = RiotLiveClientAPI(
-            base_url=self.config.riot_live_client_url,
-            player_a_name=self.config.player_a.summoner_name,
-            player_b_name=self.config.player_b.summoner_name,
-        )
+
+        if self.event_source is not None:
+            self.source = self.event_source
+        else:
+            self.source = RiotLiveClientAPI(
+                base_url=self.config.riot_live_client_url,
+                player_a_name=self.config.player_a.summoner_name,
+                player_b_name=self.config.player_b.summoner_name,
+            )
+
         self.obs = OBSController(
             host=self.config.obs_host,
             port=self.config.obs_port,
@@ -74,6 +82,15 @@ class DirectorEngine:
     def current_log_file(self) -> Path | None:
         return self.game_log.current_log_path
 
+    @property
+    def source_connected(self) -> bool:
+        return self.source.is_available()
+
+    # Backward-compatible alias
+    @property
+    def riot_connected(self) -> bool:
+        return self.source_connected
+
     def _scene_name(self, focus: FocusTarget) -> str:
         return self.obs.scene_map.get(focus, focus.value)
 
@@ -91,7 +108,7 @@ class DirectorEngine:
             )
             self._last_focus = focus
 
-        if switch_obs:
+        if switch_obs and self.enable_obs:
             scene = self._scene_name(focus)
             if self.obs.connected:
                 self.obs.switch_focus(focus)
@@ -137,10 +154,6 @@ class DirectorEngine:
         return self.obs.connected
 
     @property
-    def riot_connected(self) -> bool:
-        return self.riot_api.is_available()
-
-    @property
     def switch_strategy(self) -> SwitchStrategy:
         return self.config.switch_strategy
 
@@ -170,6 +183,8 @@ class DirectorEngine:
         self._notify()
 
     def connect_obs(self) -> bool:
+        if not self.enable_obs:
+            return False
         ok = self.obs.connect()
         if ok:
             self.game_log.log_info("OBS WebSocket connected", self.game_time)
@@ -180,7 +195,7 @@ class DirectorEngine:
             return
         self._running = True
         self._last_focus = None
-        self.game_log.log_info("Director engine started — waiting for LoL game")
+        self.game_log.log_info("Director engine started")
         self._thread = threading.Thread(target=self._loop, daemon=True, name="DirectorEngine")
         self._thread.start()
         logger.info("Director engine started")
@@ -191,8 +206,9 @@ class DirectorEngine:
             self._thread.join(timeout=3.0)
             self._thread = None
         self.game_log.end_session(reason="engine stopped")
-        self.riot_api.close()
-        self.obs.disconnect()
+        self.source.close()
+        if self.enable_obs:
+            self.obs.disconnect()
         self._last_focus = None
         logger.info("Director engine stopped")
 
@@ -216,7 +232,6 @@ class DirectorEngine:
     def inject_test_event(
         self, event_type: EventType, player: str, game_time: float | None = None
     ) -> None:
-        """Inject a synthetic event for testing without a live game."""
         t = game_time if game_time is not None else self.game_time or 600.0
         event = GameEvent(event_type, player, t)
         with self._lock:
@@ -232,6 +247,21 @@ class DirectorEngine:
         )
         self._notify()
 
+    def process_external_event(self, event: GameEvent) -> None:
+        """Ingest a single event (e.g. from HTTP API on server)."""
+        with self._lock:
+            decision = self.recorder.record_event(event, event.time)
+            state = self.recorder.get_focus_at(event.time)
+        self.game_log.log_event(event, decision, event.time)
+        if state.focus != self._last_focus:
+            self._apply_focus(
+                state.focus,
+                event.time,
+                trigger="remote",
+                switch_obs=self.config.auto_mode,
+            )
+        self._notify()
+
     def _loop(self) -> None:
         interval = self.config.riot_poll_interval_ms / 1000.0
         while self._running:
@@ -242,14 +272,14 @@ class DirectorEngine:
             time.sleep(interval)
 
     def _tick(self) -> None:
-        available = self.riot_api.is_available()
-        game_time = self.riot_api.get_game_time() if available else self.game_time
+        available = self.source.is_available()
+        game_time = self.source.get_game_time() if available else self.game_time
         self.game_log.tick(available, game_time)
 
         if not available:
             return
 
-        new_events = self.riot_api.poll_events()
+        new_events = self.source.poll_events()
 
         with self._lock:
             for event in new_events:
