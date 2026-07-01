@@ -61,6 +61,8 @@ def choose_focus(
     score_b: float,
     current_time: float,
     major_event_window: float = 5.0,
+    *,
+    split_screen_enabled: bool = False,
 ) -> FocusTarget:
     """
     Decide which POV to display based on recent events and interest scores.
@@ -72,12 +74,15 @@ def choose_focus(
       4. Engage
       5. Farm
 
-    Special rule: simultaneous major events → SPLIT_SCREEN.
+    When split_screen_enabled: simultaneous major events → SPLIT_SCREEN.
+    Otherwise pick the winning POV via priority/score.
     """
     recent_a = [e for e in player_a_events if current_time - e.time <= 10.0]
     recent_b = [e for e in player_b_events if current_time - e.time <= 10.0]
 
-    if detect_split_screen(recent_a, recent_b, major_event_window):
+    if split_screen_enabled and detect_split_screen(
+        recent_a, recent_b, major_event_window
+    ):
         return FocusTarget.SPLIT_SCREEN
 
     all_recent = recent_a + recent_b

@@ -29,6 +29,7 @@ services:
       OBS_ENABLED: ${OBS_ENABLED:-false}
       REQUIRE_API_TOKEN: "true"
       AUTO_MODE: ${AUTO_MODE:-true}
+      SPLIT_SCREEN_ENABLED: ${SPLIT_SCREEN_ENABLED:-false}
     volumes:
       - director-logs:/data/logs
     expose:

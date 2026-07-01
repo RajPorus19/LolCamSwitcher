@@ -149,6 +149,15 @@ class DirectorWindow(QMainWindow):
         self.spin_pre_delay.valueChanged.connect(self._on_pre_delay_changed)
         strat_layout.addRow("Délai avant action :", self.spin_pre_delay)
 
+        self.chk_split_beta = QCheckBox("Écran partagé (beta — à vos risques)")
+        self.chk_split_beta.setChecked(self.config.split_screen_enabled)
+        self.chk_split_beta.setToolTip(
+            "Expérimental : affiche les deux POV en même temps lors de gros plays simultanés. "
+            "Désactivé par défaut — la régie ne bascule qu'entre joueur A et joueur B."
+        )
+        self.chk_split_beta.stateChanged.connect(self._on_split_beta_changed)
+        strat_layout.addRow("", self.chk_split_beta)
+
         root.addWidget(strat_group)
 
         # Controls
@@ -207,6 +216,7 @@ class DirectorWindow(QMainWindow):
 
         self.btn_test_split = QPushButton("Test Split")
         self.btn_test_split.clicked.connect(self._inject_split_test)
+        self.btn_test_split.setEnabled(self.config.split_screen_enabled)
         test_row.addWidget(self.btn_test_split)
 
         ctrl_layout.addLayout(test_row)
@@ -275,7 +285,13 @@ class DirectorWindow(QMainWindow):
             pre_event_delay=self.spin_pre_delay.value(),
             switch_strategy=self.combo_strategy.currentData(),
             main_player=self.combo_main_player.currentData(),
+            split_screen_enabled=self.chk_split_beta.isChecked(),
         )
+
+    def _on_split_beta_changed(self, state: int) -> None:
+        enabled = state == int(Qt.CheckState.Checked)
+        self.btn_test_split.setEnabled(enabled)
+        self.engine.apply_settings(split_screen_enabled=enabled)
 
     def _on_strategy_changed(self) -> None:
         strategy = self.combo_strategy.currentData()

@@ -47,12 +47,21 @@ class TestChooseFocus:
         result = choose_focus(events_a, events_b, 60, 100, 52.0)
         assert result == FocusTarget.PLAYER_B
 
-    def test_split_on_simultaneous_kills(self):
+    def test_split_on_simultaneous_kills_when_enabled(self):
         events_a = [_event(EventType.KILL, "A", 100.0)]
         events_b = [_event(EventType.KILL, "B", 103.0)]
         assert detect_split_screen(events_a, events_b, window=5.0)
-        result = choose_focus(events_a, events_b, 100, 100, 103.0)
+        result = choose_focus(
+            events_a, events_b, 100, 100, 103.0, split_screen_enabled=True
+        )
         assert result == FocusTarget.SPLIT_SCREEN
+
+    def test_split_disabled_picks_pov(self):
+        events_a = [_event(EventType.KILL, "A", 100.0)]
+        events_b = [_event(EventType.KILL, "B", 103.0)]
+        result = choose_focus(events_a, events_b, 100, 100, 103.0)
+        assert result in (FocusTarget.PLAYER_A, FocusTarget.PLAYER_B)
+        assert result != FocusTarget.SPLIT_SCREEN
 
 
 class TestDirectorTimeline:

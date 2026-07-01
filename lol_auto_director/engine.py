@@ -52,6 +52,7 @@ class DirectorEngine:
         self.recorder.director.switch_strategy = self.config.switch_strategy
         self.recorder.director.main_player = self.config.main_player
         self.recorder.director.strategy_state.main_player = self.config.main_player
+        self.recorder.director.split_screen_enabled = self.config.split_screen_enabled
 
         if self.event_source is not None:
             self.source = self.event_source
@@ -167,6 +168,7 @@ class DirectorEngine:
         pre_event_delay: float | None = None,
         switch_strategy: SwitchStrategy | None = None,
         main_player: str | None = None,
+        split_screen_enabled: bool | None = None,
     ) -> None:
         if pre_event_delay is not None:
             self.config.pre_event_delay = max(0.0, pre_event_delay)
@@ -175,6 +177,9 @@ class DirectorEngine:
             self.config.switch_strategy = switch_strategy
         if main_player is not None:
             self.config.main_player = main_player
+        if split_screen_enabled is not None:
+            self.config.split_screen_enabled = split_screen_enabled
+            self.recorder.director.split_screen_enabled = split_screen_enabled
         if switch_strategy is not None or main_player is not None:
             self.recorder.set_strategy(
                 self.config.switch_strategy,

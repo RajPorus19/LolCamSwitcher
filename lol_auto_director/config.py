@@ -51,6 +51,7 @@ class AppConfig:
         default_factory=lambda: PlayerConfig(id="B", scene_name=SCENE_PLAYER_B)
     )
     split_scene_name: str = SCENE_SPLIT
+    split_screen_enabled: bool = False
     auto_mode: bool = True
     switch_strategy: SwitchStrategy = SwitchStrategy.SCORE_BASED
     main_player: str = "A"

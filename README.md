@@ -116,9 +116,11 @@ build-client.bat
 
 | Stratégie | Comportement |
 |-----------|--------------|
-| **Score** | Priorité kills/objectifs + split si 2 gros plays proches |
+| **Score** | Priorité kills/objectifs — bascule entre POV A et B |
 | **Joueur principal** | Focus A (ou B), bascule temporaire sur l'autre |
 | **Dual** | Alternance : reste sur le joueur actif jusqu'à l'action de l'autre |
+
+Par défaut la régie **ne fait que basculer entre les POV** (joueur A / joueur B). L'écran partagé (`SPLIT`) est une option **beta** désactivée par défaut (`SPLIT_SCREEN_ENABLED=true` sur le serveur ou case à cocher dans la GUI locale).
 
 **Replay instantané** : délai configurable (défaut −3 s) — kill à 20:00 → focus dès 19:57.
 

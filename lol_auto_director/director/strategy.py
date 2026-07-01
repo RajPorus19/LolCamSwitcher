@@ -58,7 +58,11 @@ def _check_split_screen(
     player_b_events: list[GameEvent],
     current_time: float,
     major_event_window: float,
+    *,
+    split_screen_enabled: bool = False,
 ) -> FocusTarget | None:
+    if not split_screen_enabled:
+        return None
     recent_a = [e for e in player_a_events if current_time - e.time <= major_event_window]
     recent_b = [e for e in player_b_events if current_time - e.time <= major_event_window]
     if detect_split_screen(recent_a, recent_b, major_event_window):
@@ -75,6 +79,8 @@ def resolve_focus_for_event(
     score_a: float,
     score_b: float,
     major_event_window: float,
+    *,
+    split_screen_enabled: bool = False,
 ) -> FocusTarget:
     """
     Decide focus target when a new event arrives.
@@ -84,7 +90,11 @@ def resolve_focus_for_event(
     SCORE_BASED: score + priority clash resolution.
     """
     split = _check_split_screen(
-        player_a_events, player_b_events, event.time, major_event_window
+        player_a_events,
+        player_b_events,
+        event.time,
+        major_event_window,
+        split_screen_enabled=split_screen_enabled,
     )
     if split is not None:
         return split
@@ -97,6 +107,7 @@ def resolve_focus_for_event(
             score_b,
             event.time,
             major_event_window,
+            split_screen_enabled=split_screen_enabled,
         )
 
     if strategy == SwitchStrategy.ONE_MAIN_PLAYER:
@@ -116,6 +127,7 @@ def resolve_focus_for_event(
         score_b,
         event.time,
         major_event_window,
+        split_screen_enabled=split_screen_enabled,
     )
 
 
@@ -128,10 +140,16 @@ def resolve_idle_focus(
     score_b: float,
     current_time: float,
     major_event_window: float,
+    *,
+    split_screen_enabled: bool = False,
 ) -> FocusTarget:
     """Decide focus when no active focus window is running."""
     split = _check_split_screen(
-        player_a_events, player_b_events, current_time, major_event_window
+        player_a_events,
+        player_b_events,
+        current_time,
+        major_event_window,
+        split_screen_enabled=split_screen_enabled,
     )
     if split is not None:
         return split
@@ -144,6 +162,7 @@ def resolve_idle_focus(
             score_b,
             current_time,
             major_event_window,
+            split_screen_enabled=split_screen_enabled,
         )
 
     if strategy == SwitchStrategy.ONE_MAIN_PLAYER:

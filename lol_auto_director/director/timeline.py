@@ -130,6 +130,7 @@ class DirectorTimeline:
     post_event_focus: float = POST_EVENT_FOCUS
     split_duration: float = SPLIT_SCREEN_DURATION
     major_event_window: float = 5.0
+    split_screen_enabled: bool = False
     switch_strategy: SwitchStrategy = SwitchStrategy.SCORE_BASED
     main_player: str = "A"
 
@@ -161,9 +162,10 @@ class DirectorTimeline:
             score_a,
             score_b,
             self.major_event_window,
+            split_screen_enabled=self.split_screen_enabled,
         )
 
-        if target == FocusTarget.SPLIT_SCREEN:
+        if self.split_screen_enabled and target == FocusTarget.SPLIT_SCREEN:
             self._maybe_create_split(event, score_a, score_b)
 
         decision_target = (
@@ -219,10 +221,12 @@ class DirectorTimeline:
         self.state.pre_event_delay = self.pre_event_delay
         self.scoreboard.tick(game_time)
 
-        active_split = next(
-            (s for s in reversed(self.pending_splits) if s.is_active_at(game_time)),
-            None,
-        )
+        active_split = None
+        if self.split_screen_enabled:
+            active_split = next(
+                (s for s in reversed(self.pending_splits) if s.is_active_at(game_time)),
+                None,
+            )
         if active_split:
             self.state.focus = FocusTarget.SPLIT_SCREEN
             self.state.phase = FocusPhase.SPLIT
@@ -251,6 +255,7 @@ class DirectorTimeline:
             score_b,
             game_time,
             self.major_event_window,
+            split_screen_enabled=self.split_screen_enabled,
         )
         self.state.phase = FocusPhase.IDLE
         self.state.active_decision = None
