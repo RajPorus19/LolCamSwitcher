@@ -293,20 +293,16 @@ Exécutable produit : `dist\LoLAutoDirector.exe`
 
 ## Tests & releases
 
-### Tester la détection des events LoL
+### Tester la détection des events LoL (sans stream)
 
-Guide complet : **[TESTING.md](TESTING.md)**
+Guide complet : **[TESTING.md](TESTING.md)** — **aucun OBS, aucun stream requis**, Practice Tool suffit.
 
-Résumé rapide :
+Résumé :
 
-1. Entrer en **Practice Tool** (ou custom / ranked).
-2. Vérifier l’API : `https://127.0.0.1:2999/liveclientdata/gamestats`
-3. Lancer la sonde :
-   ```bat
-   python scripts/test_live_events.py --player-a "TonPseudo" --watch
-   ```
-4. Provquer un kill / mort → events `✓ mappé` dans le terminal.
-5. Lancer l’exe → statut **`LoL ✓`** + champ **Dernier événement** qui bouge.
+1. Practice Tool → vérifier `https://127.0.0.1:2999/liveclientdata/gamestats`
+2. `python scripts/test_live_events.py --player-a "TonPseudo" --watch`
+3. Jouer (dégâts / mort / kill bot) → events en direct dans le terminal
+4. Ou lancer l’exe → **Démarrer** → `LoL ✓` + **Dernier événement** (ignore `OBS ✗`)
 
 ### Télécharger l’exécutable Windows
 

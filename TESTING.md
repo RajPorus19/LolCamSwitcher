@@ -1,20 +1,34 @@
-# Guide de test — détection des events LoL
+# Guide de test — détection des events LoL (sans stream)
 
-Ce document explique comment vérifier que **LoL Auto Director** (`.exe` ou Python) détecte bien les événements en direct depuis l’API Riot Live Client.
+Ce document sert **uniquement** à vérifier que LoL Auto Director détecte les **actions en live** (kills, morts, dégâts, objectifs…) via l’API Riot Live Client.
+
+## Ce qu’il faut / ce qu’il ne faut pas
+
+| Requis | Pas requis |
+|--------|------------|
+| Windows (pour l’`.exe`) ou Python | **OBS** |
+| League of Legends lancé | **Stream Twitch / YouTube** |
+| Être **en partie** (Practice Tool suffit) | **RTMP, VDO.ninja, serveur ingest** |
+| Même PC pour LoL + le programme | **Deuxième joueur**, **réseau**, **scènes OBS** |
+| | **Connecter OBS** dans l’interface |
+| | **Mode automatique** (optionnel pour ce test) |
+
+> **En résumé** : tu lances LoL, tu lances le programme, tu joues — tu observes les events remonter. Rien d’autre.
 
 ---
 
-## Prérequis
+## Prérequis minimaux
 
 | Condition | Obligatoire |
 |-----------|-------------|
-| Windows | Oui (pour l’`.exe`) |
 | League of Legends lancé | Oui |
-| **En partie active** (pas seulement le client) | Oui |
-| Practice Tool / Custom / Ranked / Spectateur | Tous fonctionnent |
-| Vanguard | OK — aucune injection, API officielle locale |
+| **En partie active** (pas le client seul) | Oui |
+| Practice Tool | Recommandé (test solo en 2 min) |
+| Custom / Ranked / Spectateur | OK aussi |
+| OBS / stream | **Non** |
+| Vanguard | OK — API officielle locale, aucune injection |
 
-L’API Live Client n’est disponible **que pendant une partie** :
+L’API n’est disponible **que pendant une partie** :
 
 ```
 https://127.0.0.1:2999
@@ -22,137 +36,145 @@ https://127.0.0.1:2999
 
 ---
 
-## Test 1 — Vérifier l’API dans le navigateur (30 s)
+## Parcours complet (5 min, zéro stream)
 
-1. Lance **League of Legends**.
-2. Entre en **Practice Tool** (entraînement) — le plus simple pour tester seul.
-3. Une fois en jeu, ouvre dans le navigateur (sur le même PC) :
+### Étape 0 — Practice Tool
 
-   ```
-   https://127.0.0.1:2999/liveclientdata/gamestats
-   ```
-
-4. **Résultat attendu** : JSON avec `"gameTime"`, `"gameMode"`, etc.
-
-   ```json
-   {
-     "gameTime": 42.5,
-     "gameMode": "PRACTICETOOL",
-     ...
-   }
-   ```
-
-5. Si **connexion refusée** ou page blanche → le client LoL n’est pas en partie ou l’API n’est pas encore prête. Attends le spawn en map.
-
-> Certificat auto-signé : le navigateur affiche un avertissement — c’est normal, accepte pour le test.
+1. LoL → **Entraînement** → **Practice Tool**
+2. Choisis un champion → **Lancer**
+3. Attends d’être spawn en map
 
 ---
 
-## Test 2 — Script de sonde (recommandé)
+### Test 1 — API dans le navigateur (~30 s)
 
-Depuis le repo (ou avec Python installé à côté de l’exe) :
+Sur le **même PC** que LoL, ouvre :
+
+```
+https://127.0.0.1:2999/liveclientdata/gamestats
+```
+
+**OK** → JSON avec `"gameTime"`, `"gameMode"` :
+
+```json
+{
+  "gameTime": 42.5,
+  "gameMode": "PRACTICETOOL"
+}
+```
+
+**KO** → connexion refusée → tu n’es pas encore en partie, attends le spawn.
+
+> Certificat auto-signé : accepte l’avertissement du navigateur, c’est normal.
+
+---
+
+### Test 2 — Script de sonde (recommandé, sans GUI)
+
+Depuis le repo cloné :
 
 ```bat
 pip install -r requirements.txt
-python scripts/test_live_events.py --watch
+python scripts/test_live_events.py --player-a "TonPseudo" --watch
 ```
 
-Ou avec les noms Riot de tes joueurs :
+Remplace `TonPseudo` par ton nom affiché en partie (voir étape 2 du script).
 
-```bat
-python scripts/test_live_events.py --player-a "TonPseudo" --player-b "AutrePseudo" --watch
-```
-
-### Résultat attendu
+**OK** :
 
 ```
-LoL Auto Director — test Live Client API
-============================================
 ─── Étape 1 : API Live Client ───
   OK  API disponible — temps de jeu : 01:23
 
 ─── Étape 2 : Joueurs détectés ───
   • TonPseudo  (Lux, team ORDER)
-  • ...
 
 ─── Mode watch (1.0s) — Ctrl+C pour arrêter ───
   Game 02:15 — 0 event(s) total
 ```
 
-Ensuite, **tue un sbire ou un mannequin** en Practice Tool, ou fais un kill en custom :
+Ensuite **joue** (sbires, tourelle, bots) :
 
 ```
-  [1] [02:18] A — kill (+100)  [✓ mappé]
-  Game 02:20 — 1 event(s) total
+  [1] [02:18] A — combat_nearby (+30)  [✓ mappé]
+  [2] [02:45] A — low_hp (+40)         [✓ mappé]
+  [3] [03:01] A — death (+20)          [✓ mappé]
 ```
 
 | Message | Signification |
 |---------|---------------|
-| `OK API disponible` | L’exe pourra lire LoL |
-| `FAIL API indisponible` | Pas en partie — retourne en game |
-| `✓ mappé` | Le nom Riot correspond à `--player-a` ou `--player-b` |
-| `✗ non mappé` | Event détecté mais nom joueur incorrect dans la config |
+| `OK API disponible` | La détection live fonctionne |
+| `FAIL API indisponible` | Pas en partie |
+| `✓ mappé` | Pseudo A/B correct |
+| `✗ non mappé` | Event vu, mauvais pseudo dans `--player-a` / `--player-b` |
+
+Ctrl+C pour arrêter.
 
 ---
 
-## Test 3 — Interface graphique (`.exe`)
+### Test 3 — Interface `.exe` ou GUI (sans OBS)
 
-1. Lance `LoLAutoDirector.exe` (ou `python main.py`).
-2. Renseigne **Joueur A** et **Joueur B** (noms exacts visibles en partie).
-3. Clique **Démarrer** (OBS n’est pas obligatoire pour ce test).
-4. Regarde la barre de statut en bas :
+1. Télécharge `LoLAutoDirector.exe` depuis [Releases](https://github.com/RajPorus19/LolCamSwitcher/releases)  
+   *ou* `python main.py`
+2. Renseigne **Joueur A** = ton pseudo Riot (Joueur B peut rester vide pour un test solo)
+3. Clique **Démarrer**
+4. **Ignore** : Connecter OBS, mode automatique, stream
 
-   | Statut | Signification |
-   |--------|---------------|
-   | `LoL ✓` | API Live Client détectée |
-   | `LoL ✗` | Pas en partie ou API inaccessible |
+Vérifie uniquement :
 
-5. En Practice Tool, provoque des actions (kill, mort, dégâts).
-6. Vérifie que **Dernier événement** se met à jour dans le panneau « État de la régie ».
+| Élément UI | Attendu |
+|------------|---------|
+| Barre de statut | `LoL ✓` (OBS ✗ est **normal**) |
+| Temps de jeu | Avance en sync avec la partie |
+| Dernier événement | Se met à jour quand tu subis des dégâts, meurs, kill, etc. |
+| Score A | Monte quand un event te concerne |
 
-### Boutons de test sans partie live
+**Actions à faire en Practice Tool** (sans co-joueur) :
 
-Les boutons **Test Kill A / B / Split** injectent des events fictifs pour valider la logique de régie et OBS **sans** client LoL. Ils ne testent **pas** l’API Riot.
+| Action in-game | Event attendu |
+|----------------|---------------|
+| Prendre des dégâts (sbires / tourelle) | `combat_nearby` |
+| Descendre sous ~25 % HP | `low_hp` |
+| Mourir | `death` |
+| Kill un bot (activer des bots dans Practice Tool) | `kill` |
+
+Si **Dernier événement** bouge → la détection live est **validée**. Tu peux fermer l’app.
 
 ---
 
-## Test 4 — Valider le mapping joueur A / B
+### Test 4 — Events bruts Riot (debug)
 
-1. En `--watch`, note le nom exact affiché à l’étape 2 (`summonerName`).
-2. Copie-le **tel quel** dans l’interface (casse incluse).
-3. Refais une action avec ce compte → l’event doit afficher `✓ mappé` et le bon focus.
-
-Pour lister les events bruts Riot :
+Pendant la partie :
 
 ```
 https://127.0.0.1:2999/liveclientdata/eventdata
 ```
 
----
+Liste JSON des events Riot (`ChampionKill`, `ChampionDeath`, etc.).  
+Si cette page se remplit mais pas l’app → problème de mapping pseudo (Test 2 étape 2).
 
-## Test 5 — `.exe` vs Python (parité)
+Liste des joueurs :
 
-| Test | Python | `.exe` |
-|------|--------|--------|
-| API `127.0.0.1:2999` | `test_live_events.py` | GUI statut `LoL ✓` |
-| Events kill/objectif | `--watch` | Champ « Dernier événement » |
-| Stratégies / délai | GUI | GUI |
-| OBS switch | Connecter OBS + auto | Idem |
+```
+https://127.0.0.1:2999/liveclientdata/playerlist
+```
 
-L’`.exe` embarque la même logique que `main.py` — si le script Python voit les events, l’exe aussi.
+Copie le `summonerName` **exact** dans Joueur A.
 
 ---
 
-## Scénario Practice Tool pas à pas
+## Checklist validation (sans stream)
 
-1. LoL → **Entraînement** → Practice Tool → choisir un champion → lancer.
-2. `python scripts/test_live_events.py --watch --player-a "TonPseudo"`
-3. Attendre spawn → vérifier `LoL ✓` / `OK API disponible`.
-4. Tuer des sbires / mourir contre une tourelle.
-5. Observer les events remonter (au minimum `combat_nearby`, `low_hp`, `death`).
-6. Lancer l’exe → **Démarrer** → confirmer « Dernier événement ».
+Coche tout — **aucun item OBS/stream** :
 
-> Les kills sur champions nécessitent des bots ou un co-joueur ; les events de dégâts/mort fonctionnent déjà seuls.
+- [ ] Practice Tool (ou autre partie) lancé
+- [ ] `gamestats` répond en navigateur
+- [ ] `test_live_events.py --watch` → `OK API disponible`
+- [ ] Au moins **1 event** remonte en jouant (`combat_nearby` minimum)
+- [ ] Event `✓ mappé` avec le bon pseudo
+- [ ] GUI / exe → `LoL ✓` + **Dernier événement** réactif
+
+**Si tout est coché → la détection live fonctionne.** Le setup stream/OBS est un sujet séparé ([README.md](README.md)).
 
 ---
 
@@ -160,30 +182,56 @@ L’`.exe` embarque la même logique que `main.py` — si le script Python voit 
 
 | Symptôme | Cause | Fix |
 |----------|-------|-----|
-| `LoL ✗` permanent | Pas en partie | Practice Tool ou custom |
-| API OK, 0 event | Rien ne s’est passé | Provogue kill/mort/dégâts |
-| Events `non mappés` | Mauvais pseudo | Copier le nom depuis l’étape 2 du script |
-| API OK en Python, pas en exe | Pare-feu / autre PC | L’exe doit tourner **sur le même PC que LoL** |
-| `eventdata` vide longtemps | Début de partie | Normal — events apparaissent après les premières actions |
-| Antivirus bloque l’exe | PyInstaller | Ajouter une exception pour `LoLAutoDirector.exe` |
+| `LoL ✗` | Pas en partie | Practice Tool, attendre spawn |
+| API OK, 0 event | Rien ne s’est passé | Prends des dégâts / meurs / kill un bot |
+| Events `non mappés` | Mauvais pseudo | Copier depuis `playerlist` ou étape 2 du script |
+| `OBS ✗` en statut | OBS non lancé | **Normal pour ce test — ignore** |
+| exe ne voit pas LoL | Pas le même PC | LoL et l’exe sur **la même machine** |
+| `eventdata` vide | Début de partie | Joue 1–2 min, provoque des actions |
+| Antivirus bloque l’exe | PyInstaller | Exception pour `LoLAutoDirector.exe` |
 
 ---
 
-## Checklist rapide avant un live
+## Ce qui n’est PAS couvert par ce guide
 
-- [ ] `test_live_events.py --watch` → `OK API disponible`
-- [ ] Au moins 1 event `✓ mappé` en conditions réelles
-- [ ] GUI → `LoL ✓` + « Dernier événement » réactif
-- [ ] Noms Riot A et B validés
-- [ ] (Optionnel) OBS connecté + test bouton Kill A change la scène
+| Sujet | Où le tester |
+|-------|--------------|
+| Switch scènes OBS | [README.md](README.md) — setup régie |
+| Stream RTMP / deux POV distants | [README.md](README.md) — architecture réseau |
+| Boutons **Test Kill A/B** dans la GUI | Logique régie **fictive** — ne teste pas l’API Riot |
+| Scoring / stratégies / timeline | `python -m pytest tests/ -v` (sans LoL) |
+
+Les boutons **Test Kill A / B / Split** simulent des events en mémoire pour tester la régie **sans** partie LoL. Utile pour OBS plus tard, **pas** pour valider la détection live.
 
 ---
 
-## Tests automatisés (logique régie, sans LoL)
+## Tests automatisés (sans LoL, sans stream)
+
+Logique interne uniquement (scores, stratégies, timeline) :
 
 ```bat
 pip install pytest
 python -m pytest tests/ -v
 ```
 
-Ces tests couvrent scoring, stratégies et timeline — **pas** l’API Live Client (nécessite une vraie partie).
+Ne remplace pas les tests live ci-dessus — ne touche pas à l’API Riot.
+
+---
+
+## Récap visuel
+
+```
+Practice Tool (LoL)
+       │
+       │  API locale 127.0.0.1:2999
+       ▼
+┌──────────────────────────┐
+│  test_live_events.py     │  ← terminal, events en direct
+│  ou                      │
+│  LoLAutoDirector.exe     │  ← GUI, « Dernier événement »
+└──────────────────────────┘
+       │
+       ✗ PAS de stream
+       ✗ PAS d'OBS
+       ✗ PAS de RTMP
+```
