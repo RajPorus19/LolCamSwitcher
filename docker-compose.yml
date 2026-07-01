@@ -51,13 +51,14 @@ services:
       start_period: 15s
 
   rtmp:
-    image: alfg/nginx-rtmp:latest
+    build:
+      context: .
+      dockerfile: docker/nginx-rtmp/Dockerfile
+    image: lolcamswitcher-rtmp
     container_name: lol-rtmp
     ports:
       - "${RTMP_PORT:-1935}:1935"
       - "${HLS_PORT:-8080}:8080"
-    volumes:
-      - ./docker/nginx-rtmp/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
       - regie
     restart: unless-stopped
