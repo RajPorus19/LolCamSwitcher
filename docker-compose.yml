@@ -21,14 +21,16 @@ services:
       dockerfile: docker/director/Dockerfile
     container_name: lol-director
     env_file:
-      - path: .env
-        required: false
+      - .env
     environment:
+      # Explicit passthrough — some Compose versions ignore env_file object syntax
+      LOL_DIRECTOR_API_TOKEN: ${LOL_DIRECTOR_API_TOKEN:?Set LOL_DIRECTOR_API_TOKEN in .env}
       LOGS_DIR: /data/logs
       OBS_HOST: ${OBS_HOST:-obs}
       OBS_ENABLED: ${OBS_ENABLED:-false}
-      REQUIRE_API_TOKEN: "true"
+      REQUIRE_API_TOKEN: ${REQUIRE_API_TOKEN:-true}
       AUTO_MODE: ${AUTO_MODE:-true}
+      DEBUG_MODE: ${DEBUG_MODE:-false}
       SPLIT_SCREEN_ENABLED: ${SPLIT_SCREEN_ENABLED:-false}
     volumes:
       - director-logs:/data/logs

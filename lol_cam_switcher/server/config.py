@@ -20,7 +20,17 @@ def _env_bool(key: str, default: bool = False) -> bool:
 
 
 def _default_token() -> str:
-    return os.environ.get("LOL_DIRECTOR_API_TOKEN", "")
+    raw = os.environ.get("LOL_DIRECTOR_API_TOKEN", "")
+    return raw.strip().strip('"').strip("'")
+
+
+_PLACEHOLDER_TOKENS = frozenset(
+    {
+        "",
+        "change-me-to-a-long-random-secret",
+        "changeme",
+    }
+)
 
 
 @dataclass
@@ -33,11 +43,17 @@ class ServerConfig:
     require_token: bool = field(default_factory=lambda: _env_bool("REQUIRE_API_TOKEN", False))
 
     def ensure_token(self) -> str:
-        if self.api_token:
-            return self.api_token
+        token = self.api_token.strip().strip('"').strip("'")
+        if token and token not in _PLACEHOLDER_TOKENS:
+            self.api_token = token
+            return token
         if self.require_token:
             print(
-                "ERROR: LOL_DIRECTOR_API_TOKEN is required (set in .env)",
+                "ERROR: LOL_DIRECTOR_API_TOKEN is required (set in .env next to docker-compose.yml)",
+                file=sys.stderr,
+            )
+            print(
+                "Format: LOL_DIRECTOR_API_TOKEN=your-secret   (no spaces, not the example placeholder)",
                 file=sys.stderr,
             )
             sys.exit(1)
