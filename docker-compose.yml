@@ -23,6 +23,7 @@ services:
     env_file:
       - .env
     environment:
+      LOL_DIRECTOR_ENV_FILE: /config/.env
       LOL_DIRECTOR_API_TOKEN: ${LOL_DIRECTOR_API_TOKEN:-}
       LOGS_DIR: /data/logs
       OBS_HOST: ${OBS_HOST:-obs}

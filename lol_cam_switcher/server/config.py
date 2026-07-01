@@ -6,8 +6,15 @@ import os
 import secrets
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from lol_cam_switcher.config import AppConfig
+from lol_cam_switcher.server.env_loader import (
+    DEFAULT_ENV_FILE,
+    PLACEHOLDER_TOKENS,
+    parse_dotenv,
+    resolve_api_token,
+)
 
 
 def _env_bool(key: str, default: bool = False) -> bool:
@@ -20,17 +27,8 @@ def _env_bool(key: str, default: bool = False) -> bool:
 
 
 def _default_token() -> str:
-    raw = os.environ.get("LOL_DIRECTOR_API_TOKEN", "")
-    return raw.strip().strip('"').strip("'")
-
-
-_PLACEHOLDER_TOKENS = frozenset(
-    {
-        "",
-        "change-me-to-a-long-random-secret",
-        "changeme",
-    }
-)
+    token, _ = resolve_api_token()
+    return token
 
 
 @dataclass
@@ -43,20 +41,52 @@ class ServerConfig:
     require_token: bool = field(default_factory=lambda: _env_bool("REQUIRE_API_TOKEN", False))
 
     def ensure_token(self) -> str:
-        token = self.api_token.strip().strip('"').strip("'")
-        if token and token not in _PLACEHOLDER_TOKENS:
+        token, source = resolve_api_token()
+        if token and token not in PLACEHOLDER_TOKENS:
             self.api_token = token
+            if source.startswith("file:"):
+                print(f"Loaded LOL_DIRECTOR_API_TOKEN from {source.removeprefix('file:')} ({len(token)} chars)")
             return token
+
         if self.require_token:
+            env_path = Path(os.environ.get("LOL_DIRECTOR_ENV_FILE", DEFAULT_ENV_FILE))
             print(
-                "ERROR: LOL_DIRECTOR_API_TOKEN is required (set in .env next to docker-compose.yml)",
+                "ERROR: LOL_DIRECTOR_API_TOKEN is missing or invalid.",
                 file=sys.stderr,
             )
             print(
-                "Format: LOL_DIRECTOR_API_TOKEN=your-secret   (no spaces, not the example placeholder)",
+                "Set it in .env next to docker-compose.yml, then rebuild:",
                 file=sys.stderr,
             )
+            print(
+                "  LOL_DIRECTOR_API_TOKEN=$(openssl rand -hex 32)",
+                file=sys.stderr,
+            )
+            print(
+                "  docker compose build --no-cache director && docker compose up -d --force-recreate director",
+                file=sys.stderr,
+            )
+            if env_path.is_file():
+                keys = sorted(parse_dotenv(env_path).keys())
+                if "LOL_DIRECTOR_API_TOKEN" in keys:
+                    print(
+                        "Found LOL_DIRECTOR_API_TOKEN in mounted .env but value is empty or placeholder.",
+                        file=sys.stderr,
+                    )
+                else:
+                    print(
+                        f"Mounted {env_path} but LOL_DIRECTOR_API_TOKEN line not found.",
+                        file=sys.stderr,
+                    )
+                    if keys:
+                        print(f"Keys in .env: {', '.join(keys[:12])}", file=sys.stderr)
+            else:
+                print(
+                    f"Mounted env file not found at {env_path} — pull latest compose and recreate container.",
+                    file=sys.stderr,
+                )
             sys.exit(1)
+
         self.api_token = secrets.token_urlsafe(32)
         return self.api_token
 

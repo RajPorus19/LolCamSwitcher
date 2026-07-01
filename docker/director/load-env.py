@@ -1,68 +1,50 @@
 #!/usr/bin/env python3
-"""Load LOL_DIRECTOR_API_TOKEN from container env or mounted .env file."""
+"""CLI preflight — verify LOL_DIRECTOR_API_TOKEN is available."""
 
 from __future__ import annotations
 
-import os
-import pathlib
 import sys
+from pathlib import Path
 
-PLACEHOLDERS = frozenset({"", "change-me-to-a-long-random-secret", "changeme"})
-ENV_PATH = pathlib.Path("/config/.env")
-
-
-def parse_dotenv(path: pathlib.Path) -> dict[str, str]:
-    if not path.is_file():
-        return {}
-    values: dict[str, str] = {}
-    text = path.read_text(encoding="utf-8-sig")
-    for line in text.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith("export "):
-            line = line[7:].strip()
-        if "=" not in line:
-            continue
-        key, _, value = line.partition("=")
-        values[key.strip()] = value.strip().strip('"').strip("'")
-    return values
-
-
-def normalize(token: str) -> str:
-    return token.strip().strip('"').strip("'")
+from lol_cam_switcher.server.env_loader import (
+    DEFAULT_ENV_FILE,
+    PLACEHOLDER_TOKENS,
+    parse_dotenv,
+    resolve_api_token,
+)
 
 
 def main() -> int:
-    token = normalize(os.environ.get("LOL_DIRECTOR_API_TOKEN", ""))
-    if token not in PLACEHOLDERS:
-        os.environ["LOL_DIRECTOR_API_TOKEN"] = token
+    token, source = resolve_api_token()
+    if "--print" in sys.argv:
+        if not token:
+            return 1
+        sys.stdout.write(token)
         return 0
 
-    file_values = parse_dotenv(ENV_PATH)
-    token = normalize(file_values.get("LOL_DIRECTOR_API_TOKEN", ""))
-    if token not in PLACEHOLDERS:
-        os.environ["LOL_DIRECTOR_API_TOKEN"] = token
-        print(f"Loaded LOL_DIRECTOR_API_TOKEN from {ENV_PATH} ({len(token)} chars)")
-        return 0
-
-    print("ERROR: LOL_DIRECTOR_API_TOKEN missing or still the example placeholder.", file=sys.stderr)
-    print("Edit .env in the project root (next to docker-compose.yml):", file=sys.stderr)
-    print("  LOL_DIRECTOR_API_TOKEN=$(openssl rand -hex 32)", file=sys.stderr)
-    print("One line, no spaces around '=', no 'export'.", file=sys.stderr)
-    if ENV_PATH.is_file():
-        keys = sorted(file_values.keys())
-        preview = ", ".join(keys[:12])
-        if "LOL_DIRECTOR_API_TOKEN" not in file_values:
-            print(f"/config/.env mounted but LOL_DIRECTOR_API_TOKEN line not found.", file=sys.stderr)
-            if keys:
-                print(f"Keys seen in .env: {preview}", file=sys.stderr)
+    if token:
+        if source.startswith("file:"):
+            print(f"OK: LOL_DIRECTOR_API_TOKEN from {source.removeprefix('file:')} ({len(token)} chars)")
         else:
-            print("LOL_DIRECTOR_API_TOKEN line exists but value is empty or placeholder.", file=sys.stderr)
+            print(f"OK: LOL_DIRECTOR_API_TOKEN from environment ({len(token)} chars)")
+        return 0
+
+    print("ERROR: LOL_DIRECTOR_API_TOKEN missing or invalid.", file=sys.stderr)
+    env_path = Path(DEFAULT_ENV_FILE)
+    if env_path.is_file():
+        keys = sorted(parse_dotenv(env_path).keys())
+        if "LOL_DIRECTOR_API_TOKEN" in keys:
+            val = parse_dotenv(env_path).get("LOL_DIRECTOR_API_TOKEN", "")
+            if val in PLACEHOLDER_TOKENS:
+                print("LOL_DIRECTOR_API_TOKEN is empty or still the example placeholder.", file=sys.stderr)
+        else:
+            print(f"{env_path} has no LOL_DIRECTOR_API_TOKEN line.", file=sys.stderr)
+            if keys:
+                print(f"Keys found: {', '.join(keys)}", file=sys.stderr)
     else:
-        print(f"{ENV_PATH} not found — run: docker compose up -d --build --force-recreate director", file=sys.stderr)
+        print(f"{env_path} not found.", file=sys.stderr)
     return 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
