@@ -3,6 +3,14 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.0] - 2026-07-01
+
+### Added
+
+- Per-game session logs (`game_YYYY-MM-DD_HHMMSS.log`) with events, focus decisions, and camera switches
+- Live log viewer in GUI with past log file picker and open-folder button
+- Logs stored in `%LOCALAPPDATA%\\LoLAutoDirector\\logs` (Windows)
+
 ## [1.1.0] - 2026-07-01
 
 ### Added
@@ -28,5 +36,6 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 - CLI probe script `scripts/test_live_events.py`
 - Windows `.exe` build via PyInstaller (`build.bat`, GitHub Actions release)
 
+[1.2.0]: https://github.com/RajPorus19/LolCamSwitcher/releases/tag/v1.2.0
 [1.1.0]: https://github.com/RajPorus19/LolCamSwitcher/releases/tag/v1.1.0
 [1.0.0]: https://github.com/RajPorus19/LolCamSwitcher/releases/tag/v1.0.0

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QObject, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QMessageBox,
+    QPlainTextEdit,
     QPushButton,
     QSpinBox,
     QStatusBar,
@@ -39,17 +40,28 @@ FOCUS_LABELS = {
 }
 
 
+class _LogBridge(QObject):
+    line_added = Signal(str)
+
+
 class DirectorWindow(QMainWindow):
     def __init__(self, config: AppConfig | None = None):
         super().__init__()
         self.config = config or AppConfig()
-        self.engine = DirectorEngine(config=self.config, on_state_changed=self._refresh_ui)
+        self._log_bridge = _LogBridge()
+        self._log_bridge.line_added.connect(self._append_live_log)
+        self.engine = DirectorEngine(
+            config=self.config,
+            on_state_changed=self._refresh_ui,
+            on_log_line=self._log_bridge.line_added.emit,
+        )
+        self._log_view_mode = "live"
         self._setup_ui()
         self._setup_timer()
 
     def _setup_ui(self) -> None:
         self.setWindowTitle("LoL Auto Director")
-        self.setMinimumSize(520, 480)
+        self.setMinimumSize(640, 720)
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -200,6 +212,47 @@ class DirectorWindow(QMainWindow):
         ctrl_layout.addLayout(test_row)
         root.addWidget(ctrl_group)
 
+        # Session log viewer
+        log_group = QGroupBox("Journal de partie")
+        log_layout = QVBoxLayout(log_group)
+
+        log_toolbar = QHBoxLayout()
+        self.combo_log_files = QComboBox()
+        self.combo_log_files.setMinimumWidth(220)
+        self.combo_log_files.currentIndexChanged.connect(self._on_log_file_selected)
+        log_toolbar.addWidget(QLabel("Fichier :"))
+        log_toolbar.addWidget(self.combo_log_files, stretch=1)
+
+        self.btn_log_live = QPushButton("Live")
+        self.btn_log_live.setCheckable(True)
+        self.btn_log_live.setChecked(True)
+        self.btn_log_live.clicked.connect(self._show_live_log)
+        log_toolbar.addWidget(self.btn_log_live)
+
+        self.btn_log_refresh = QPushButton("Actualiser")
+        self.btn_log_refresh.clicked.connect(self._refresh_log_file_list)
+        log_toolbar.addWidget(self.btn_log_refresh)
+
+        self.btn_log_open_folder = QPushButton("Ouvrir dossier")
+        self.btn_log_open_folder.clicked.connect(self._open_logs_folder)
+        log_toolbar.addWidget(self.btn_log_open_folder)
+
+        log_layout.addLayout(log_toolbar)
+
+        self.txt_log = QPlainTextEdit()
+        self.txt_log.setReadOnly(True)
+        self.txt_log.setMaximumBlockCount(3000)
+        self.txt_log.setPlaceholderText("Les events et changements de caméra apparaîtront ici…")
+        self.txt_log.setFont(QFont("Consolas", 10))
+        log_layout.addWidget(self.txt_log)
+
+        self.lbl_log_path = QLabel("")
+        self.lbl_log_path.setWordWrap(True)
+        log_layout.addWidget(self.lbl_log_path)
+
+        root.addWidget(log_group)
+
+        self._refresh_log_file_list()
         self.statusBar().showMessage("Prêt")
 
     def _setup_timer(self) -> None:
@@ -264,8 +317,59 @@ class DirectorWindow(QMainWindow):
         self.statusBar().showMessage("Replay du dernier événement")
 
     def _manual_switch(self, target: FocusTarget) -> None:
-        self.engine.obs.switch_focus(target)
+        self.engine.manual_switch(target)
         self._refresh_ui()
+
+    def _append_live_log(self, line: str) -> None:
+        if self._log_view_mode != "live":
+            return
+        self.txt_log.appendPlainText(line)
+        sb = self.txt_log.verticalScrollBar()
+        sb.setValue(sb.maximum())
+
+    def _show_live_log(self) -> None:
+        self._log_view_mode = "live"
+        self.btn_log_live.setChecked(True)
+        self.combo_log_files.blockSignals(True)
+        self.combo_log_files.setCurrentIndex(-1)
+        self.combo_log_files.blockSignals(False)
+        self.txt_log.setPlainText("\n".join(self.engine.game_log.live_lines))
+        path = self.engine.current_log_file
+        self.lbl_log_path.setText(f"Live — {path}" if path else "Live — en attente de partie")
+
+    def _refresh_log_file_list(self) -> None:
+        files = self.engine.game_log.list_log_files()
+        self.combo_log_files.blockSignals(True)
+        self.combo_log_files.clear()
+        self.combo_log_files.addItem("( sélectionner un fichier )", None)
+        for f in files:
+            self.combo_log_files.addItem(f.name, f)
+        self.combo_log_files.blockSignals(False)
+        if self._log_view_mode == "live":
+            self._show_live_log()
+
+    def _on_log_file_selected(self, index: int) -> None:
+        if index <= 0:
+            return
+        path = self.combo_log_files.itemData(index)
+        if path is None:
+            return
+        self._log_view_mode = "file"
+        self.btn_log_live.setChecked(False)
+        content = self.engine.game_log.read_log_file(path)
+        self.txt_log.setPlainText(content)
+        self.lbl_log_path.setText(str(path))
+
+    def _open_logs_folder(self) -> None:
+        import subprocess
+
+        folder = str(self.engine.logs_dir)
+        if sys.platform == "win32":
+            subprocess.run(["explorer", folder], check=False)
+        elif sys.platform == "darwin":
+            subprocess.run(["open", folder], check=False)
+        else:
+            subprocess.run(["xdg-open", folder], check=False)
 
     def _inject_test(self, event_type: EventType, player: str) -> None:
         t = self.engine.game_time or 600.0
@@ -299,7 +403,9 @@ class DirectorWindow(QMainWindow):
         obs_status = "OBS ✓" if self.engine.obs_connected else "OBS ✗"
         riot_status = "LoL ✓" if self.engine.riot_connected else "LoL ✗"
         auto = "AUTO" if self.engine.auto_mode else "MANUEL"
-        self.statusBar().showMessage(f"{obs_status} | {riot_status} | {auto}")
+        log_hint = self.engine.current_log_file
+        log_name = log_hint.name if log_hint else "—"
+        self.statusBar().showMessage(f"{obs_status} | {riot_status} | {auto} | log: {log_name}")
 
     def closeEvent(self, event) -> None:
         self.engine.stop()

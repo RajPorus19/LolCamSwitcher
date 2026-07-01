@@ -54,3 +54,4 @@ class AppConfig:
     auto_mode: bool = True
     switch_strategy: SwitchStrategy = SwitchStrategy.SCORE_BASED
     main_player: str = "A"
+    logs_dir: str = ""  # empty = default (AppData/LoLAutoDirector/logs)

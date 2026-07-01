@@ -226,6 +226,26 @@ Ne remplace pas les tests live ci-dessus — ne touche pas à l’API Riot.
 
 ---
 
+## Journal de partie (logs)
+
+Chaque partie génère un fichier :
+
+```
+%LOCALAPPDATA%\LoLAutoDirector\logs\game_2026-07-01_143052.log
+```
+
+Exemple de lignes :
+
+```
+[2026-07-01 14:30:52] [GAME 02:15] EVENT        Player A — kill (+100) | target PLAYER_A | focus 02:12→02:27 | pre-delay -3s
+[2026-07-01 14:30:52] [GAME 02:12] FOCUS        Director focus → PLAYER_A (trigger=event)
+[2026-07-01 14:30:52] [GAME 02:12] CAMERA       Camera switched to PLAYER_A (scene: PLAYER_A) at game time 02:12 [event]
+```
+
+Consultable en direct dans la GUI → **Journal de partie** (bouton **Live** ou sélection d’un ancien fichier).
+
+---
+
 ## Récap visuel
 
 ```

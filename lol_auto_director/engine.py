@@ -6,6 +6,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Callable
 
 from lol_auto_director.buffer.recorder import ReplayRecorder
@@ -15,6 +16,7 @@ from lol_auto_director.director.strategy import SwitchStrategy
 from lol_auto_director.lol.api import RiotLiveClientAPI
 from lol_auto_director.lol.events import EventType, GameEvent
 from lol_auto_director.obs.controller import OBSController
+from lol_auto_director.session_log.game_logger import GameSessionLogger, default_logs_dir
 
 logger = logging.getLogger(__name__)
 
@@ -25,16 +27,21 @@ class DirectorEngine:
 
     config: AppConfig = field(default_factory=AppConfig)
     on_state_changed: Callable[[], None] | None = None
+    on_log_line: Callable[[str], None] | None = None
 
     recorder: ReplayRecorder = field(init=False)
     riot_api: RiotLiveClientAPI = field(init=False)
     obs: OBSController = field(init=False)
+    game_log: GameSessionLogger = field(init=False)
 
     _thread: threading.Thread | None = field(default=None, repr=False)
     _running: bool = field(default=False, repr=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    _last_focus: FocusTarget | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
+        logs_path = Path(self.config.logs_dir) if self.config.logs_dir else default_logs_dir()
+        self.game_log = GameSessionLogger(logs_dir=logs_path, on_line=self.on_log_line)
         self.recorder = ReplayRecorder(
             pre_event_delay=self.config.pre_event_delay,
             post_event_focus=self.config.post_event_focus,
@@ -58,6 +65,43 @@ class DirectorEngine:
             },
             on_scene_changed=lambda _: self._notify(),
         )
+
+    @property
+    def logs_dir(self) -> Path:
+        return self.game_log.logs_dir
+
+    @property
+    def current_log_file(self) -> Path | None:
+        return self.game_log.current_log_path
+
+    def _scene_name(self, focus: FocusTarget) -> str:
+        return self.obs.scene_map.get(focus, focus.value)
+
+    def _apply_focus(
+        self,
+        focus: FocusTarget,
+        game_time: float,
+        *,
+        trigger: str,
+        switch_obs: bool,
+    ) -> None:
+        if focus != self._last_focus:
+            self.game_log.log_focus_decision(
+                focus, game_time, reason=f"trigger={trigger}"
+            )
+            self._last_focus = focus
+
+        if switch_obs:
+            scene = self._scene_name(focus)
+            if self.obs.connected:
+                self.obs.switch_focus(focus)
+            self.game_log.log_camera_switch(
+                scene,
+                focus,
+                game_time,
+                obs_connected=self.obs.connected,
+                trigger=trigger,
+            )
 
     @property
     def auto_mode(self) -> bool:
@@ -126,12 +170,17 @@ class DirectorEngine:
         self._notify()
 
     def connect_obs(self) -> bool:
-        return self.obs.connect()
+        ok = self.obs.connect()
+        if ok:
+            self.game_log.log_info("OBS WebSocket connected", self.game_time)
+        return ok
 
     def start(self) -> None:
         if self._running:
             return
         self._running = True
+        self._last_focus = None
+        self.game_log.log_info("Director engine started — waiting for LoL game")
         self._thread = threading.Thread(target=self._loop, daemon=True, name="DirectorEngine")
         self._thread.start()
         logger.info("Director engine started")
@@ -141,8 +190,10 @@ class DirectorEngine:
         if self._thread:
             self._thread.join(timeout=3.0)
             self._thread = None
+        self.game_log.end_session(reason="engine stopped")
         self.riot_api.close()
         self.obs.disconnect()
+        self._last_focus = None
         logger.info("Director engine stopped")
 
     def replay_last_event(self) -> None:
@@ -150,8 +201,16 @@ class DirectorEngine:
         if decision is None:
             logger.warning("No event to replay")
             return
-        if self.config.auto_mode:
-            self.obs.switch_focus(decision.target)
+        gt = decision.event.time
+        self.game_log.log_info(
+            f"Replay last event: {decision.event} → {decision.target.value}", gt
+        )
+        self._apply_focus(decision.target, gt, trigger="replay", switch_obs=True)
+        self._notify()
+
+    def manual_switch(self, target: FocusTarget) -> None:
+        gt = self.game_time
+        self._apply_focus(target, gt, trigger="manual", switch_obs=True)
         self._notify()
 
     def inject_test_event(
@@ -161,10 +220,16 @@ class DirectorEngine:
         t = game_time if game_time is not None else self.game_time or 600.0
         event = GameEvent(event_type, player, t)
         with self._lock:
-            self.recorder.record_event(event, t)
+            decision = self.recorder.record_event(event, t)
             state = self.recorder.get_focus_at(t)
-        if self.config.auto_mode:
-            self.obs.switch_focus(state.focus)
+        self.game_log.log_event(event, decision, t)
+        self.game_log.log_info(f"Test event injected: {event_type.value} ({player})", t)
+        self._apply_focus(
+            state.focus,
+            t,
+            trigger="test",
+            switch_obs=self.config.auto_mode,
+        )
         self._notify()
 
     def _loop(self) -> None:
@@ -177,19 +242,28 @@ class DirectorEngine:
             time.sleep(interval)
 
     def _tick(self) -> None:
-        if not self.riot_api.is_available():
+        available = self.riot_api.is_available()
+        game_time = self.riot_api.get_game_time() if available else self.game_time
+        self.game_log.tick(available, game_time)
+
+        if not available:
             return
 
-        game_time = self.riot_api.get_game_time()
         new_events = self.riot_api.poll_events()
 
         with self._lock:
             for event in new_events:
-                self.recorder.record_event(event, game_time)
+                decision = self.recorder.record_event(event, game_time)
+                self.game_log.log_event(event, decision, game_time)
             state = self.recorder.get_focus_at(game_time)
 
-        if self.config.auto_mode and new_events:
-            self.obs.switch_focus(state.focus)
+        if state.focus != self._last_focus:
+            self._apply_focus(
+                state.focus,
+                game_time,
+                trigger="timeline" if not new_events else "event",
+                switch_obs=self.config.auto_mode,
+            )
 
         self._notify()
 
