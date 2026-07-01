@@ -10,6 +10,7 @@ import uvicorn
 
 from lol_cam_switcher.server.app import create_app
 from lol_cam_switcher.server.config import ServerConfig, _env_bool, app_config_from_env
+from lol_cam_switcher.server.env_loader import resolve_env_bool
 
 
 def main() -> int:
@@ -39,7 +40,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    obs_enabled = _env_bool("OBS_ENABLED", True)
+    obs_enabled = resolve_env_bool("OBS_ENABLED", False)
     if args.no_obs:
         obs_enabled = False
 

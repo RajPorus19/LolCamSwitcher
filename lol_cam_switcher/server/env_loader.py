@@ -38,6 +38,39 @@ def parse_dotenv(path: pathlib.Path) -> dict[str, str]:
     return values
 
 
+_TRUTHY = frozenset({"1", "true", "yes", "on"})
+_FALSY = frozenset({"0", "false", "no", "off"})
+
+
+def _parse_bool_str(value: str) -> bool | None:
+    v = normalize(value).lower()
+    if v in _TRUTHY:
+        return True
+    if v in _FALSY:
+        return False
+    return None
+
+
+def resolve_env_bool(key: str, default: bool = False, *, env_file: str | None = None) -> bool:
+    """
+    Parse a boolean setting. Prefer mounted .env over process env when the file
+    has an explicit value — Compose `environment:` overrides can force false
+    even when .env says true (same class of bug as LOL_DIRECTOR_API_TOKEN).
+    """
+    path = pathlib.Path(env_file or os.environ.get("LOL_DIRECTOR_ENV_FILE", DEFAULT_ENV_FILE))
+    file_values = parse_dotenv(path) if path.is_file() else {}
+
+    file_bool = _parse_bool_str(file_values.get(key, ""))
+    if file_bool is not None:
+        return file_bool
+
+    env_bool = _parse_bool_str(os.environ.get(key, ""))
+    if env_bool is not None:
+        return env_bool
+
+    return default
+
+
 def resolve_api_token(
     *,
     env_file: str | None = None,

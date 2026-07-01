@@ -35,6 +35,9 @@ if token in bad:
         print("Keys found:", ", ".join(sorted(values.keys())))
     sys.exit(1)
 print(f"OK: LOL_DIRECTOR_API_TOKEN set ({len(token)} chars)")
+obs = values.get("OBS_ENABLED", "false").lower()
+if obs in ("1", "true", "yes", "on"):
+    print("INFO: OBS_ENABLED=true — use: docker compose --profile full up -d")
 PY
 
 docker compose config >/dev/null

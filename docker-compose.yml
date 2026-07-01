@@ -27,7 +27,7 @@ services:
       LOL_DIRECTOR_ENV_FILE: /config/.env
       LOGS_DIR: /data/logs
       OBS_HOST: ${OBS_HOST:-obs}
-      OBS_ENABLED: ${OBS_ENABLED:-false}
+      # Do NOT set OBS_ENABLED here — ${...:-false} overrides env_file and ignores mounted .env
       REQUIRE_API_TOKEN: ${REQUIRE_API_TOKEN:-true}
       AUTO_MODE: ${AUTO_MODE:-true}
       DEBUG_MODE: ${DEBUG_MODE:-false}

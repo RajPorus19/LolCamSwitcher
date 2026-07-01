@@ -14,6 +14,7 @@ from lol_cam_switcher.server.env_loader import (
     PLACEHOLDER_TOKENS,
     parse_dotenv,
     resolve_api_token,
+    resolve_env_bool,
 )
 
 
@@ -37,7 +38,7 @@ class ServerConfig:
     port: int = 8750
     api_token: str = field(default_factory=_default_token)
     cors_origins: list[str] = field(default_factory=lambda: ["*"])
-    obs_enabled: bool = field(default_factory=lambda: _env_bool("OBS_ENABLED", True))
+    obs_enabled: bool = field(default_factory=lambda: resolve_env_bool("OBS_ENABLED", False))
     require_token: bool = field(default_factory=lambda: _env_bool("REQUIRE_API_TOKEN", False))
 
     def ensure_token(self) -> str:
