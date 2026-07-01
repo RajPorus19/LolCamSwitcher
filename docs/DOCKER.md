@@ -120,6 +120,18 @@ Scènes : `PLAYER_A`, `PLAYER_B`, `SPLIT`
 | Docker OBS | `OBS_ENABLED=true` + `docker compose --profile full up -d` |
 | OBS hôte Linux | `OBS_ENABLED=true`, `OBS_HOST=172.17.0.1` |
 
+### Twitch via `.env` (conteneur OBS)
+
+Dans `.env`, avant `docker compose --profile full up -d` :
+
+```bash
+TWITCH_STREAM_KEY=live_xxxxxxxx   # clé Twitch (Dashboard → Stream)
+TWITCH_SERVER=                    # vide = ingest auto Twitch
+TWITCH_SERVICE=Twitch             # défaut
+```
+
+Au démarrage du conteneur `obs`, le profil `regie` reçoit ces paramètres — plus besoin de les saisir à la main dans OBS (scènes RTMP joueurs à configurer une fois).
+
 ## HTTPS
 
 1. DNS → VPS

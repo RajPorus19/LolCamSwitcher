@@ -93,6 +93,9 @@ services:
     environment:
       OBS_WEBSOCKET_PORT: ${OBS_PORT:-4455}
       OBS_WEBSOCKET_PASSWORD: ${OBS_PASSWORD:-}
+      TWITCH_STREAM_KEY: ${TWITCH_STREAM_KEY:-}
+      TWITCH_SERVER: ${TWITCH_SERVER:-}
+      TWITCH_SERVICE: ${TWITCH_SERVICE:-Twitch}
     ports:
       - "${OBS_PORT:-4455}:4455"
     depends_on:

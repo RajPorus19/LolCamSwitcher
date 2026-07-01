@@ -12,13 +12,16 @@ RUN apt-get update \
         ca-certificates \
         xvfb \
         curl \
+        python3 \
     && add-apt-repository -y ppa:obsproject/obs-studio \
     && apt-get update \
     && apt-get install -y --no-install-recommends obs-studio \
     && rm -rf /var/lib/apt/lists/*
 
+COPY docker/obs/profile/ /opt/obs-bundle/
+COPY docker/obs/configure-obs.py /configure-obs.py
 COPY docker/obs/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh /configure-obs.py
 
 EXPOSE 4455
 
