@@ -8,7 +8,7 @@ Ce document répond aux questions concrètes après déploiement du serveur :
 - **Comment l'OBS régie** récupère les deux POV et stream sur Twitch ?
 
 > Architecture : clients Windows (`LoLAutoDirectorClient.exe`) + serveur Linux Docker.  
-> Schémas détaillés : [CLIENT_SERVER.md](CLIENT_SERVER.md) · Docker : [docker/DOCKER.md](docker/DOCKER.md)
+> Schémas détaillés : [CLIENT_SERVER.md](CLIENT_SERVER.md) · Docker : [DOCKER.md](DOCKER.md)
 
 ---
 
@@ -441,5 +441,5 @@ docker compose exec director tail -f /data/logs/game_XXXX.log
 |----------|---------|
 | [TESTING.md](TESTING.md) | Tester la détection events **sans** serveur ni stream |
 | [CLIENT_SERVER.md](CLIENT_SERVER.md) | Schémas, API, comparaison des modes |
-| [docker/DOCKER.md](docker/DOCKER.md) | Détails Docker, ports, profiles |
-| [README.md](README.md) | Vue d'ensemble du projet |
+| [DOCKER.md](DOCKER.md) | Détails Docker, ports, profiles |
+| [README.md](../README.md) | Vue d'ensemble du projet |

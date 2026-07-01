@@ -68,11 +68,11 @@ cp .env.example .env          # définir LOL_DIRECTOR_API_TOKEN
 docker compose up -d
 ```
 
-→ Guide complet : **[docker/DOCKER.md](docker/DOCKER.md)**
+→ Guide complet : **[docs/DOCKER.md](docs/DOCKER.md)**
 
 ### 2. Clients joueurs (Windows)
 
-→ Fiches détaillées joueur A/B, token, OBS : **[SETUP.md](SETUP.md)** (étapes 4–6)
+→ Fiches détaillées joueur A/B, token, OBS : **[docs/SETUP.md](docs/SETUP.md)** (étapes 4–6)
 
 Télécharger **`LoLAutoDirectorClient.exe`** depuis [Releases](https://github.com/RajPorus19/LolCamSwitcher/releases) ou :
 
@@ -126,19 +126,21 @@ build-client.bat
 
 ## Documentation
 
+Toute la doc détaillée est dans **[docs/](docs/)** :
+
 | Document | Contenu |
 |----------|---------|
-| **[SETUP.md](SETUP.md)** | **Guide complet** — token, OBS joueur, OBS régie, fiches A/B |
-| [CLIENT_SERVER.md](CLIENT_SERVER.md) | Schémas, API, comparaison des modes |
-| [docker/DOCKER.md](docker/DOCKER.md) | Compose, ports, OBS régie, HTTPS |
-| [TESTING.md](TESTING.md) | Tester events sans stream |
-| [CHANGELOG.md](CHANGELOG.md) | Versions |
+| **[docs/SETUP.md](docs/SETUP.md)** | **Guide complet** — token, OBS joueur, OBS régie, fiches A/B |
+| [docs/CLIENT_SERVER.md](docs/CLIENT_SERVER.md) | Schémas, API, comparaison des modes |
+| [docs/DOCKER.md](docs/DOCKER.md) | Compose, ports, OBS régie, HTTPS |
+| [docs/TESTING.md](docs/TESTING.md) | Tester events sans stream |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md) | Versions |
 
 ---
 
 ## Tests (sans stream)
 
-Practice Tool + client ou script sonde — voir **[TESTING.md](TESTING.md)**.
+Practice Tool + client ou script sonde — voir **[docs/TESTING.md](docs/TESTING.md)**.
 
 ```bat
 python scripts/test_live_events.py --player-a "TonPseudo" --watch
@@ -195,6 +197,6 @@ main.py              # entry legacy GUI
 
 **https://github.com/RajPorus19/LolCamSwitcher/releases**
 
-Version actuelle : **1.4.0** — voir [CHANGELOG.md](CHANGELOG.md).
+Version actuelle : **1.4.0** — voir [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 Assets : `LoLAutoDirectorClient.exe` (joueurs) · `LoLAutoDirector.exe` (legacy).

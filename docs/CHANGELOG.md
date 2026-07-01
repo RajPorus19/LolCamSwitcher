@@ -12,7 +12,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 - Server env config: `OBS_ENABLED`, `REQUIRE_API_TOKEN`, `LOGS_DIR`
 - `--no-obs` CLI flag for API-only server mode
 - **Windows client-only** build: `build-client.spec` → `LoLAutoDirectorClient.exe`
-- [docker/DOCKER.md](docker/DOCKER.md) deployment guide
+- [DOCKER.md](DOCKER.md) deployment guide
 
 ## [1.3.0] - 2026-07-01
 
@@ -51,7 +51,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 - Switch strategies: score-based, one main player, dual alternation
 - Interest scoring with decay (kill, objective, engage, etc.)
 - Split screen on simultaneous major events
-- Setup guide for two remote POV streams ([README.md](README.md))
+- Setup guide for two remote POV streams ([README.md](../README.md))
 - Live event testing guide ([TESTING.md](TESTING.md))
 - CLI probe script `scripts/test_live_events.py`
 - Windows `.exe` build via PyInstaller (`build.bat`, GitHub Actions release)

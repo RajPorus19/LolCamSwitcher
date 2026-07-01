@@ -2,7 +2,7 @@
 
 Stack de production pour la **régie centrale**.
 
-> **Guide pas-à-pas** (token, OBS joueur, fiches A/B) : **[../SETUP.md](../SETUP.md)**  
+> **Guide pas-à-pas** (token, OBS joueur, fiches A/B) : **[SETUP.md](SETUP.md)**  
 > Les **clients Windows** (`LoLAutoDirectorClient.exe`) tournent sur les PC joueurs.  
 > Ce compose **ne contient pas** le client — uniquement le serveur.
 
@@ -144,4 +144,4 @@ build-client.bat
 
 Variables : voir [.env.example](../.env.example).
 
-Guide opérationnel complet (token, OBS joueur, OBS régie) : **[SETUP.md](../SETUP.md)**.
+Guide opérationnel complet (token, OBS joueur, OBS régie) : **[SETUP.md](SETUP.md)**.

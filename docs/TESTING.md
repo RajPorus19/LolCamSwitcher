@@ -205,8 +205,8 @@ Pour le setup production (serveur, token, OBS RTMP) → **[SETUP.md](SETUP.md)**
 
 | Sujet | Où le tester |
 |-------|--------------|
-| Switch scènes OBS | [README.md](README.md) — setup régie |
-| Stream RTMP / deux POV distants | [README.md](README.md) — architecture réseau |
+| Switch scènes OBS | [SETUP.md](SETUP.md) — setup régie |
+| Stream RTMP / deux POV distants | [SETUP.md](SETUP.md) — architecture réseau |
 | Boutons **Test Kill A/B** dans la GUI | Logique régie **fictive** — ne teste pas l’API Riot |
 | Scoring / stratégies / timeline | `python -m pytest tests/ -v` (sans LoL) |
 

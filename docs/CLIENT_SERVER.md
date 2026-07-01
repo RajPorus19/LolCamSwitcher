@@ -68,7 +68,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Détails : **[docker/DOCKER.md](docker/DOCKER.md)**
+Détails : **[DOCKER.md](DOCKER.md)**
 
 ### Python direct (dev)
 
