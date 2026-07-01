@@ -9,12 +9,15 @@ from pathlib import Path
 from lol_cam_switcher.server.env_loader import (
     DEFAULT_ENV_FILE,
     PLACEHOLDER_TOKENS,
+    apply_mounted_dotenv,
     parse_dotenv,
     resolve_api_token,
+    resolve_env_bool,
 )
 
 
 def main() -> int:
+    mounted = apply_mounted_dotenv()
     token, source = resolve_api_token()
     if "--print" in sys.argv:
         if not token:
@@ -27,6 +30,8 @@ def main() -> int:
             print(f"OK: LOL_DIRECTOR_API_TOKEN from {source.removeprefix('file:')} ({len(token)} chars)")
         else:
             print(f"OK: LOL_DIRECTOR_API_TOKEN from environment ({len(token)} chars)")
+        obs = resolve_env_bool("OBS_ENABLED", False)
+        print(f"OK: OBS_ENABLED={obs}" + (f" (from {mounted})" if mounted else ""))
         return 0
 
     print("ERROR: LOL_DIRECTOR_API_TOKEN missing or invalid.", file=sys.stderr)

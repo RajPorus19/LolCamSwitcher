@@ -14,7 +14,7 @@ COPY server_main.py /app/server_main.py
 COPY docker/director/entrypoint.sh /entrypoint.sh
 COPY docker/director/load-env.py /load-env.py
 # Bump to invalidate Docker layer cache when server startup logic changes
-ARG APP_BUILD_ID=2026-07-01-token-fix
+ARG APP_BUILD_ID=2026-07-01-obs-enabled-fix
 RUN echo "LolCamSwitcher director build ${APP_BUILD_ID}"
 RUN chmod +x /entrypoint.sh /load-env.py
 

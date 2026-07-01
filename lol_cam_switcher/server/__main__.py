@@ -10,7 +10,9 @@ import uvicorn
 
 from lol_cam_switcher.server.app import create_app
 from lol_cam_switcher.server.config import ServerConfig, _env_bool, app_config_from_env
-from lol_cam_switcher.server.env_loader import resolve_env_bool
+from lol_cam_switcher.server.env_loader import apply_mounted_dotenv, resolve_env_bool
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> int:
@@ -18,6 +20,17 @@ def main() -> int:
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
+
+    mounted = apply_mounted_dotenv()
+    if mounted:
+        obs = resolve_env_bool("OBS_ENABLED", False)
+        logger.info("Loaded config from %s — OBS_ENABLED=%s", mounted, obs)
+    else:
+        env_path = __import__("os").environ.get("LOL_DIRECTOR_ENV_FILE", "/config/.env")
+        logger.warning(
+            "Mounted env file missing at %s — using container environment only",
+            env_path,
+        )
 
     parser = argparse.ArgumentParser(description="LolCamSwitcher — regie server")
     parser.add_argument("--host", default="0.0.0.0")

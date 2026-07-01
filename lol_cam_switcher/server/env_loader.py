@@ -15,6 +15,22 @@ PLACEHOLDER_TOKENS = frozenset(
 
 DEFAULT_ENV_FILE = "/config/.env"
 
+# Operator settings in mounted .env — applied at startup so live edits work without recreate.
+MOUNTED_CONFIG_KEYS = frozenset(
+    {
+        "LOL_DIRECTOR_API_TOKEN",
+        "OBS_ENABLED",
+        "OBS_HOST",
+        "OBS_PORT",
+        "OBS_PASSWORD",
+        "REQUIRE_API_TOKEN",
+        "AUTO_MODE",
+        "DEBUG_MODE",
+        "SPLIT_SCREEN_ENABLED",
+        "RIOT_POLL_INTERVAL_MS",
+    }
+)
+
 
 def normalize(value: str) -> str:
     return value.strip().strip('"').strip("'")
@@ -49,6 +65,24 @@ def _parse_bool_str(value: str) -> bool | None:
     if v in _FALSY:
         return False
     return None
+
+
+def apply_mounted_dotenv(*, env_file: str | None = None) -> pathlib.Path | None:
+    """
+    Copy settings from mounted .env into os.environ.
+
+    Docker injects env_file values only at container create time; the bind mount
+    at /config/.env stays live. Applying it on startup makes OBS_ENABLED and
+    similar settings take effect after `docker compose up` without --force-recreate.
+    """
+    path = pathlib.Path(env_file or os.environ.get("LOL_DIRECTOR_ENV_FILE", DEFAULT_ENV_FILE))
+    if not path.is_file():
+        return None
+    file_values = parse_dotenv(path)
+    for key in MOUNTED_CONFIG_KEYS:
+        if key in file_values:
+            os.environ[key] = file_values[key]
+    return path
 
 
 def resolve_env_bool(key: str, default: bool = False, *, env_file: str | None = None) -> bool:

@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 
-from lol_cam_switcher.server.env_loader import parse_dotenv, resolve_api_token, resolve_env_bool
+from lol_cam_switcher.server.env_loader import apply_mounted_dotenv, parse_dotenv, resolve_api_token, resolve_env_bool
 
 
 def test_parse_dotenv(tmp_path: Path):
@@ -30,6 +30,18 @@ def test_resolve_prefers_env(monkeypatch):
     token, source = resolve_api_token(env_file="/nonexistent")
     assert token == "from-env"
     assert source == "env"
+
+
+def test_apply_mounted_dotenv_overrides_stale_env(monkeypatch, tmp_path: Path):
+    env = tmp_path / ".env"
+    env.write_text("OBS_ENABLED=true\nOBS_HOST=obs\n", encoding="utf-8")
+    monkeypatch.setenv("OBS_ENABLED", "false")
+    monkeypatch.setenv("OBS_HOST", "localhost")
+    path = apply_mounted_dotenv(env_file=str(env))
+    assert path == env
+    assert os.environ["OBS_ENABLED"] == "true"
+    assert os.environ["OBS_HOST"] == "obs"
+    assert resolve_env_bool("OBS_ENABLED", False) is True
 
 
 def test_resolve_env_bool_prefers_file_over_compose_false(monkeypatch, tmp_path: Path):
