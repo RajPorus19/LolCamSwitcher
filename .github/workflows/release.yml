@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build executable
+        run: pyinstaller build.spec --noconfirm
+
+      - name: Verify exe exists
+        run: |
+          if (-Not (Test-Path "dist\LoLAutoDirector.exe")) {
+            Write-Error "LoLAutoDirector.exe not found"
+            exit 1
+          }
+          Get-Item "dist\LoLAutoDirector.exe" | Format-List Name, Length
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/LoLAutoDirector.exe
+          generate_release_notes: true

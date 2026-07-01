@@ -291,6 +291,33 @@ Exécutable produit : `dist\LoLAutoDirector.exe`
 
 ---
 
+## Tests & releases
+
+### Tester la détection des events LoL
+
+Guide complet : **[TESTING.md](TESTING.md)**
+
+Résumé rapide :
+
+1. Entrer en **Practice Tool** (ou custom / ranked).
+2. Vérifier l’API : `https://127.0.0.1:2999/liveclientdata/gamestats`
+3. Lancer la sonde :
+   ```bat
+   python scripts/test_live_events.py --player-a "TonPseudo" --watch
+   ```
+4. Provquer un kill / mort → events `✓ mappé` dans le terminal.
+5. Lancer l’exe → statut **`LoL ✓`** + champ **Dernier événement** qui bouge.
+
+### Télécharger l’exécutable Windows
+
+Releases : **[github.com/RajPorus19/LolCamSwitcher/releases](https://github.com/RajPorus19/LolCamSwitcher/releases)**
+
+Asset : `LoLAutoDirector.exe` (build automatique à chaque tag `v*`).
+
+Version actuelle : **1.0.0** — voir [CHANGELOG.md](CHANGELOG.md).
+
+---
+
 ## Structure du projet
 
 ```
