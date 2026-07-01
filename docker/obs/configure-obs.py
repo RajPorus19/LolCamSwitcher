@@ -61,7 +61,25 @@ def main() -> int:
         shutil.copy(bundled_scene, scenes_dir / f"{COLLECTION}.json")
 
     _write_service_json(profile_dir)
+    _write_websocket_config()
     return 0
+
+
+def _write_websocket_config() -> None:
+    ws_dir = OBS_CONFIG / "plugin_config" / "obs-websocket"
+    ws_dir.mkdir(parents=True, exist_ok=True)
+    password = os.environ.get("OBS_WEBSOCKET_PASSWORD", "")
+    port = int(os.environ.get("OBS_WEBSOCKET_PORT", "4455"))
+    payload = {
+        "alerts_enabled": False,
+        "auth_required": bool(password),
+        "first_load": False,
+        "server_enabled": True,
+        "server_password": password,
+        "server_port": port,
+    }
+    (ws_dir / "config.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    print(f"OBS WebSocket configured on port {port}")
 
 
 if __name__ == "__main__":

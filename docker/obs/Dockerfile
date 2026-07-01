@@ -16,12 +16,14 @@ RUN apt-get update \
     && add-apt-repository -y ppa:obsproject/obs-studio \
     && apt-get update \
     && apt-get install -y --no-install-recommends obs-studio \
+    && pip3 install --no-cache-dir obsws-python \
     && rm -rf /var/lib/apt/lists/*
 
 COPY docker/obs/profile/ /opt/obs-bundle/
 COPY docker/obs/configure-obs.py /configure-obs.py
+COPY docker/obs/wait-and-start-stream.py /wait-and-start-stream.py
 COPY docker/obs/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh /configure-obs.py
+RUN chmod +x /entrypoint.sh /configure-obs.py /wait-and-start-stream.py
 
 EXPOSE 4455
 

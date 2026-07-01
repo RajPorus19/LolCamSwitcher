@@ -130,7 +130,7 @@ TWITCH_SERVER=                    # vide = ingest auto Twitch
 TWITCH_SERVICE=Twitch             # défaut
 ```
 
-Au démarrage du conteneur `obs`, le profil `regie` reçoit ces paramètres — plus besoin de les saisir à la main dans OBS (scènes RTMP joueurs à configurer une fois).
+Au démarrage du conteneur `obs`, le stream Twitch démarre automatiquement si `TWITCH_STREAM_KEY` est défini (`TWITCH_AUTO_START=true` par défaut). Scènes RTMP joueurs à configurer une fois dans OBS régie.
 
 ## HTTPS
 

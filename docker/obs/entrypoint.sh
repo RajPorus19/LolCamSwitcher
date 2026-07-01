@@ -17,17 +17,26 @@ python3 /configure-obs.py
 
 echo "OBS WebSocket port: ${OBS_WEBSOCKET_PORT}"
 echo "Profile: ${OBS_PROFILE} | Collection: ${OBS_COLLECTION}"
-echo "Configure OBS scenes PLAYER_A, PLAYER_B, SPLIT with RTMP sources:"
+echo "RTMP sources for scenes PLAYER_A / PLAYER_B:"
 echo "  rtmp://rtmp:1935/live/playerA"
 echo "  rtmp://rtmp:1935/live/playerB"
+
 if [ -n "${TWITCH_STREAM_KEY:-}" ]; then
   echo "Twitch stream key loaded from TWITCH_STREAM_KEY"
+  if [ "${TWITCH_AUTO_START:-true}" = "true" ]; then
+    echo "TWITCH_AUTO_START=true — will start streaming when OBS is ready"
+  fi
 else
-  echo "Set TWITCH_STREAM_KEY in .env to preconfigure the Twitch output"
+  echo "Set TWITCH_STREAM_KEY in .env to configure Twitch output"
 fi
 
-# Run OBS — websocket v5 is built into OBS 28+
-exec obs \
+# Run OBS in background so we can trigger StartStream via WebSocket
+obs \
   --profile "${OBS_PROFILE}" \
   --collection "${OBS_COLLECTION}" \
-  --minimize-to-tray 2>&1
+  --minimize-to-tray 2>&1 &
+OBS_PID=$!
+
+python3 /wait-and-start-stream.py || echo "WARN: Twitch auto-start failed (OBS keeps running)" >&2
+
+wait "${OBS_PID}"
