@@ -17,7 +17,7 @@ from lol_auto_director.common.schemas import (
 from lol_auto_director.config import AppConfig
 from lol_auto_director.engine import DirectorEngine
 from lol_auto_director.server.auth import make_verify_token
-from lol_auto_director.server.config import ServerConfig
+from lol_auto_director.server.config import ServerConfig, app_config_from_env
 from lol_auto_director.server.hub import RemoteEventHub
 
 logger = logging.getLogger(__name__)
@@ -44,19 +44,26 @@ def create_app(server_config: ServerConfig | None = None, app_config: AppConfig 
     token = _server_config.ensure_token()
     verify = make_verify_token(token)
     _hub = RemoteEventHub()
+    obs_enabled = _server_config.obs_enabled
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         global _engine
-        cfg = app_config or AppConfig()
-        _engine = DirectorEngine(config=cfg, event_source=_hub, enable_obs=True)
+        cfg = app_config or app_config_from_env()
+        _engine = DirectorEngine(config=cfg, event_source=_hub, enable_obs=obs_enabled)
         _engine.start()
-        if _engine.connect_obs():
-            logger.info("OBS connected on server startup")
+        if obs_enabled:
+            if _engine.connect_obs():
+                logger.info("OBS connected on server startup")
+            else:
+                logger.warning(
+                    "OBS not connected — set OBS_HOST/OBS_PASSWORD or use OBS_ENABLED=false"
+                )
         else:
-            logger.warning("OBS not connected — configure WebSocket and restart if needed")
+            logger.info("OBS disabled (OBS_ENABLED=false) — API + event regie only")
         logger.info("Regie server started — API token required for /api/v1/*")
-        logger.info("API token: %s", token)
+        if not _server_config.require_token:
+            logger.info("API token: %s", token)
         yield
         _engine.stop()
         _engine = None
@@ -64,7 +71,7 @@ def create_app(server_config: ServerConfig | None = None, app_config: AppConfig 
     app = FastAPI(
         title="LoL Auto Director Server",
         description="Central regie API — ingest events from client agents, control OBS",
-        version="1.3.0",
+        version="1.4.0",
         lifespan=lifespan,
     )
     app.add_middleware(
@@ -77,7 +84,14 @@ def create_app(server_config: ServerConfig | None = None, app_config: AppConfig 
 
     @app.get("/health")
     def health() -> dict:
-        return {"status": "ok"}
+        eng = get_engine()
+        hub = get_hub()
+        return {
+            "status": "ok",
+            "obs_enabled": obs_enabled,
+            "obs_connected": eng.obs_connected if obs_enabled else None,
+            "clients": hub.connected_clients(),
+        }
 
     @app.get("/api/v1/status", response_model=StatusResponse, dependencies=[Depends(verify)])
     def status() -> StatusResponse:
@@ -91,7 +105,7 @@ def create_app(server_config: ServerConfig | None = None, app_config: AppConfig 
             score_b=eng.score_b,
             last_event=str(last) if last else None,
             clients_connected=hub.connected_clients(),
-            obs_connected=eng.obs_connected,
+            obs_connected=eng.obs_connected if obs_enabled else False,
             auto_mode=eng.auto_mode,
         )
 

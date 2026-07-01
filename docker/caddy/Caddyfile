@@ -1,0 +1,13 @@
+# Reverse proxy — LoL Auto Director API
+# Clients connect here (port 80/443) instead of :8750 directly.
+
+:80 {
+	encode gzip
+	reverse_proxy director:8750
+}
+
+# Uncomment and set DOMAIN in .env for automatic HTTPS:
+# {$DOMAIN} {
+#     encode gzip
+#     reverse_proxy director:8750
+# }

@@ -22,19 +22,22 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Build executable
+      - name: Build director GUI executable
         run: pyinstaller build.spec --noconfirm
 
-      - name: Verify exe exists
+      - name: Build client agent executable
+        run: pyinstaller build-client.spec --noconfirm
+
+      - name: Verify executables
         run: |
-          if (-Not (Test-Path "dist\LoLAutoDirector.exe")) {
-            Write-Error "LoLAutoDirector.exe not found"
-            exit 1
-          }
-          Get-Item "dist\LoLAutoDirector.exe" | Format-List Name, Length
+          if (-Not (Test-Path "dist\LoLAutoDirector.exe")) { Write-Error "Director exe missing"; exit 1 }
+          if (-Not (Test-Path "dist\LoLAutoDirectorClient.exe")) { Write-Error "Client exe missing"; exit 1 }
+          Get-ChildItem dist\*.exe | Format-List Name, Length
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/LoLAutoDirector.exe
+          files: |
+            dist/LoLAutoDirector.exe
+            dist/LoLAutoDirectorClient.exe
           generate_release_notes: true

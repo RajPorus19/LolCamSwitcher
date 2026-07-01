@@ -1,0 +1,110 @@
+# LoL Auto Director — Linux regie stack (VPS)
+#
+# Quick start:
+#   cp .env.example .env   # set LOL_DIRECTOR_API_TOKEN
+#   docker compose up -d
+#
+# With OBS headless (experimental):
+#   docker compose --profile full up -d
+#
+# Clients (Windows .exe): relay events to https://DOMAIN or http://VPS_IP
+# Players OBS:           rtmp://VPS_IP:1935/live/playerA  |  playerB
+
+services:
+  director:
+    build:
+      context: .
+      dockerfile: docker/director/Dockerfile
+    container_name: lol-director
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      LOGS_DIR: /data/logs
+      OBS_HOST: ${OBS_HOST:-obs}
+      OBS_ENABLED: ${OBS_ENABLED:-false}
+      REQUIRE_API_TOKEN: "true"
+      AUTO_MODE: ${AUTO_MODE:-true}
+    volumes:
+      - director-logs:/data/logs
+    expose:
+      - "8750"
+    depends_on:
+      rtmp:
+        condition: service_started
+    networks:
+      - regie
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8750/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  rtmp:
+    image: alfg/nginx-rtmp:latest
+    container_name: lol-rtmp
+    ports:
+      - "${RTMP_PORT:-1935}:1935"
+      - "${HLS_PORT:-8080}:8080"
+    volumes:
+      - ./docker/nginx-rtmp/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - regie
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: lol-caddy
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      DOMAIN: ${DOMAIN:-}
+      CADDY_GLOBAL_OPTIONS: ${CADDY_GLOBAL_OPTIONS:-}
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      director:
+        condition: service_healthy
+    networks:
+      - regie
+    restart: unless-stopped
+
+  obs:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: docker/obs/Dockerfile
+    container_name: lol-obs
+    environment:
+      OBS_WEBSOCKET_PORT: ${OBS_PORT:-4455}
+      OBS_WEBSOCKET_PASSWORD: ${OBS_PASSWORD:-}
+    ports:
+      - "${OBS_PORT:-4455}:4455"
+    depends_on:
+      rtmp:
+        condition: service_started
+    networks:
+      - regie
+    restart: unless-stopped
+    shm_size: "1gb"
+
+  # When using profile full, set OBS_ENABLED=true in .env and OBS_HOST=obs
+
+networks:
+  regie:
+    driver: bridge
+
+volumes:
+  director-logs:
+  caddy-data:
+  caddy-config:

@@ -8,3 +8,5 @@ venv/
 *.spec.bak
 .pytest_cache/
 LoLAutoDirector.exe
+LoLAutoDirectorClient.exe
+.env

@@ -22,22 +22,29 @@ PC Joueur A                         PC Joueur B
 
 ## 1. Serveur (VPS / régie)
 
-### Lancer
+### Lancer (Linux Docker — recommandé)
 
-```bat
-set LOL_DIRECTOR_API_TOKEN=mon-token-secret-long
-python server_main.py --host 0.0.0.0 --port 8750
+```bash
+cp .env.example .env   # définir LOL_DIRECTOR_API_TOKEN
+docker compose up -d
 ```
 
-Sans variable d'environnement, un token aléatoire est généré et affiché **une fois** au démarrage — copiez-le pour les clients.
+Guide complet : **[docker/DOCKER.md](docker/DOCKER.md)**
+
+### Lancer (Python direct)
+
+```bash
+export LOL_DIRECTOR_API_TOKEN=mon-token-secret
+export OBS_ENABLED=false
+python server_main.py --host 0.0.0.0 --port 8750 --require-token
+```
 
 ### Prérequis serveur
 
-- Windows (OBS + LoL Auto Director)
-- OBS Studio avec WebSocket v5 (port 4455)
-- Scènes `PLAYER_A`, `PLAYER_B`, `SPLIT`
-- RTMP ingest pour les 2 flux joueurs
-- Port **8750** ouvert (API clients)
+- **Linux VPS** avec Docker — voir **[docker/DOCKER.md](docker/DOCKER.md)**
+- **Windows** uniquement pour les **clients** (`.exe` via `build-client.bat`)
+- OBS Studio sur la régie (Docker profile `full`, ou installé sur l'hôte)
+- Port **1935** (RTMP) + **80/443** (API) ouverts
 
 ### API
 

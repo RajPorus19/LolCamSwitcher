@@ -80,6 +80,17 @@ Le **serveur** agrège les events A+B, pilote OBS central, stream Twitch.
 
 Voir **[CLIENT_SERVER.md](CLIENT_SERVER.md)** pour le setup détaillé (token, API, VPS).
 
+### Serveur Linux (Docker)
+
+```bash
+cp .env.example .env
+docker compose up -d
+```
+
+Guide : **[docker/DOCKER.md](docker/DOCKER.md)** — nginx-rtmp + director + Caddy.
+
+Clients Windows : **`LoLAutoDirectorClient.exe`** (`build-client.bat`).
+
 ---
 
 ## Mode legacy : API locale sur la régie

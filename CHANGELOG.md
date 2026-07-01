@@ -3,6 +3,17 @@
 All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.4.0] - 2026-07-01
+
+### Added
+
+- **Docker Compose** stack for Linux VPS: `director` + `nginx-rtmp` + `Caddy`
+- Optional OBS headless container (`docker compose --profile full`)
+- Server env config: `OBS_ENABLED`, `REQUIRE_API_TOKEN`, `LOGS_DIR`
+- `--no-obs` CLI flag for API-only server mode
+- **Windows client-only** build: `build-client.spec` → `LoLAutoDirectorClient.exe`
+- [docker/DOCKER.md](docker/DOCKER.md) deployment guide
+
 ## [1.3.0] - 2026-07-01
 
 ### Added
@@ -45,6 +56,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 - CLI probe script `scripts/test_live_events.py`
 - Windows `.exe` build via PyInstaller (`build.bat`, GitHub Actions release)
 
+[1.4.0]: https://github.com/RajPorus19/LolCamSwitcher/releases/tag/v1.4.0
 [1.3.0]: https://github.com/RajPorus19/LolCamSwitcher/releases/tag/v1.3.0
 [1.2.0]: https://github.com/RajPorus19/LolCamSwitcher/releases/tag/v1.2.0
 [1.1.0]: https://github.com/RajPorus19/LolCamSwitcher/releases/tag/v1.1.0
