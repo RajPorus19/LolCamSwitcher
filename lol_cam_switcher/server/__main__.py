@@ -43,13 +43,15 @@ def main() -> int:
     if args.no_obs:
         obs_enabled = False
 
-    cfg = ServerConfig(
-        host=args.host,
-        port=args.port,
-        api_token=args.token,
-        obs_enabled=obs_enabled,
-        require_token=args.require_token,
-    )
+    cfg_kwargs: dict = {
+        "host": args.host,
+        "port": args.port,
+        "obs_enabled": obs_enabled,
+        "require_token": args.require_token,
+    }
+    if args.token.strip():
+        cfg_kwargs["api_token"] = args.token.strip()
+    cfg = ServerConfig(**cfg_kwargs)
     token = cfg.ensure_token()
     if not cfg.require_token:
         print(f"LolCamSwitcher Server — Bearer token: {token}")

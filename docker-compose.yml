@@ -23,8 +23,8 @@ services:
     env_file:
       - .env
     environment:
+      # Do NOT set LOL_DIRECTOR_API_TOKEN here — empty ${...:-} overrides env_file and wipes the token.
       LOL_DIRECTOR_ENV_FILE: /config/.env
-      LOL_DIRECTOR_API_TOKEN: ${LOL_DIRECTOR_API_TOKEN:-}
       LOGS_DIR: /data/logs
       OBS_HOST: ${OBS_HOST:-obs}
       OBS_ENABLED: ${OBS_ENABLED:-false}
@@ -34,7 +34,7 @@ services:
       SPLIT_SCREEN_ENABLED: ${SPLIT_SCREEN_ENABLED:-false}
     volumes:
       - director-logs:/data/logs
-      - ./.env:/config/.env:ro
+      - ./.env:/config/.env:ro,Z
     expose:
       - "8750"
     depends_on:

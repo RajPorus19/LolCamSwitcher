@@ -30,3 +30,12 @@ def test_resolve_prefers_env(monkeypatch):
     token, source = resolve_api_token(env_file="/nonexistent")
     assert token == "from-env"
     assert source == "env"
+
+
+def test_resolve_file_when_env_empty(monkeypatch, tmp_path: Path):
+    env = tmp_path / ".env"
+    env.write_text("LOL_DIRECTOR_API_TOKEN=file-token\n", encoding="utf-8")
+    monkeypatch.setenv("LOL_DIRECTOR_API_TOKEN", "")
+    token, source = resolve_api_token(env_file=str(env))
+    assert token == "file-token"
+    assert source == f"file:{env}"

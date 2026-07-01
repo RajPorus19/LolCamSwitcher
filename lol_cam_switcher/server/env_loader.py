@@ -44,6 +44,9 @@ def resolve_api_token(
 ) -> tuple[str, str]:
     """
     Return (token, source) where source is 'env', 'file', or '' if not found.
+
+    Prefer mounted .env file when process env is empty (Docker Compose may inject
+    an empty LOL_DIRECTOR_API_TOKEN that overrides env_file).
     """
     from_env = normalize(os.environ.get("LOL_DIRECTOR_API_TOKEN", ""))
     if from_env not in PLACEHOLDER_TOKENS:
