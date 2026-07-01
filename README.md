@@ -126,7 +126,9 @@ build-client.bat
 
 ## Documentation
 
-Toute la doc détaillée est dans **[docs/](docs/)** :
+📖 **Site de documentation** : **[rajporus19.github.io/LolCamSwitcher](https://rajporus19.github.io/LolCamSwitcher/)** — guide pas-à-pas interactif
+
+Toute la doc est aussi disponible dans **[docs/](docs/)** :
 
 | Document | Contenu |
 |----------|---------|

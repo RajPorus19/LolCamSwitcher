@@ -1,0 +1,68 @@
+site_name: LoL Auto Director
+site_description: Guide de setup pas-à-pas pour broadcast League of Legends dual-POV
+site_url: https://rajporus19.github.io/LolCamSwitcher/
+repo_url: https://github.com/RajPorus19/LolCamSwitcher
+repo_name: RajPorus19/LolCamSwitcher
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+
+theme:
+  name: material
+  language: fr
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Mode sombre
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Mode clair
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - navigation.path
+    - toc.follow
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search:
+      lang:
+        - fr
+        - en
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+nav:
+  - Accueil: index.md
+  - Guide de setup: SETUP.md
+  - Architecture: CLIENT_SERVER.md
+  - Docker: DOCKER.md
+  - Tests (sans stream): TESTING.md
+  - Changelog: CHANGELOG.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/RajPorus19/LolCamSwitcher

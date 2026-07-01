@@ -51,7 +51,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 - Switch strategies: score-based, one main player, dual alternation
 - Interest scoring with decay (kill, objective, engage, etc.)
 - Split screen on simultaneous major events
-- Setup guide for two remote POV streams ([README.md](../README.md))
+- Setup guide for two remote POV streams ([Accueil](index.md))
 - Live event testing guide ([TESTING.md](TESTING.md))
 - CLI probe script `scripts/test_live_events.py`
 - Windows `.exe` build via PyInstaller (`build.bat`, GitHub Actions release)

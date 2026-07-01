@@ -142,6 +142,6 @@ build-client.bat
 → dist\LoLAutoDirectorClient.exe
 ```
 
-Variables : voir [.env.example](../.env.example).
+Variables : voir [`.env.example`](https://github.com/RajPorus19/LolCamSwitcher/blob/main/.env.example) sur GitHub.
 
 Guide opérationnel complet (token, OBS joueur, OBS régie) : **[SETUP.md](SETUP.md)**.

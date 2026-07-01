@@ -10,3 +10,4 @@ venv/
 LoLAutoDirector.exe
 LoLAutoDirectorClient.exe
 .env
+site/

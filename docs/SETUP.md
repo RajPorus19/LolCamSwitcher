@@ -442,4 +442,4 @@ docker compose exec director tail -f /data/logs/game_XXXX.log
 | [TESTING.md](TESTING.md) | Tester la détection events **sans** serveur ni stream |
 | [CLIENT_SERVER.md](CLIENT_SERVER.md) | Schémas, API, comparaison des modes |
 | [DOCKER.md](DOCKER.md) | Détails Docker, ports, profiles |
-| [README.md](../README.md) | Vue d'ensemble du projet |
+| [README.md](index.md) | Vue d'ensemble du projet |
