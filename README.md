@@ -1,231 +1,114 @@
 # LoL Auto Director
 
-Système de régie automatique pour un broadcast League of Legends à **deux POV** (joueur A + joueur B).
+Régie automatique pour broadcast **League of Legends dual-POV** (joueur A + joueur B).
 
-Le programme analyse les événements de la partie (kills, objectifs, combats…) et **commande une seule instance OBS** sur la **machine régie** pour basculer entre les scènes `PLAYER_A`, `PLAYER_B` et `SPLIT`.
+Le système détecte les events live (kills, objectifs, combats…) et commande l'**OBS central** sur le VPS pour basculer entre `PLAYER_A`, `PLAYER_B` et `SPLIT`.
 
-> **Important** : LoL Auto Director ne pilote **pas** l’OBS de chaque joueur chez lui. Il pilote l’OBS **central** qui reçoit les deux flux vidéo et envoie le stream final vers Twitch / YouTube.
+> **Deux binaires distincts** : client Windows sur les PC joueurs · serveur Linux (Docker) sur le VPS.
 
 ---
 
-## Architecture réseau (2 joueurs distants)
+## Architecture (production)
 
 ```
-┌─────────────────────┐          ┌─────────────────────┐
-│   CHEZ JOUEUR A     │          │   CHEZ JOUEUR B     │
-│                     │          │                     │
-│  LoL (client)       │          │  LoL (client)       │
-│  OBS (capture POV)  │          │  OBS (capture POV)  │
-│       │             │          │       │             │
-│       │ RTMP / SRT  │          │       │ RTMP / SRT  │
-└───────┼─────────────┘          └───────┼─────────────┘
-        │                                │
-        └────────────┬───────────────────┘
-                     ▼
-        ┌────────────────────────────┐
-        │     MACHINE RÉGIE          │
-        │  (organisateur / streamer) │
-        │                            │
-        │  Serveur RTMP (optionnel)  │
-        │       ou                   │
-        │  sources Web (VDO.ninja…)  │
-        │                            │
-        │  OBS CENTRAL               │
-        │   ├─ scène PLAYER_A        │◄── LoL Auto Director
-        │   ├─ scène PLAYER_B        │    (WebSocket v5)
-        │   └─ scène SPLIT           │
-        │                            │
-        │  LoL Auto Director (GUI)   │
-        │  Client LoL (spectateur)   │◄── événements API
-        │                            │
-        │       │ stream final       │
-        └───────┼────────────────────┘
-                ▼
-         Twitch / YouTube
+┌──────────────────────────────┐       ┌──────────────────────────────┐
+│   PC JOUEUR A  (Windows)     │       │   PC JOUEUR B  (Windows)     │
+│                              │       │                              │
+│  LoL                         │       │  LoL                         │
+│  LoLAutoDirectorClient.exe   │       │  LoLAutoDirectorClient.exe   │
+│    └─ events locaux (LoL API)│       │    └─ events locaux          │
+│    └─ relay HTTPS ───────────┼───┐   │    └─ relay HTTPS ───────────┼───┐
+│                              │   │   │                              │   │
+│  OBS → RTMP :1935/playerA ───┼───┼───┼── OBS → RTMP :1935/playerB ──┼───┤
+└──────────────────────────────┘   │   └──────────────────────────────┘   │
+                                   │                                      │
+                                   ▼                                      ▼
+              ┌────────────────────────────────────────────────────────────┐
+              │              VPS Linux — docker compose up -d               │
+              │                                                            │
+              │   ┌─────────┐    ┌───────────┐    ┌─────────────────────┐  │
+              │   │  Caddy  │───►│ director  │───►│ OBS (profile full   │  │
+              │   │ :80/443 │    │ API régie │    │  ou hôte Linux)     │  │
+              │   └────▲────┘    └───────────┘    │  PLAYER_A / B / SPLIT│  │
+              │        │ Bearer token               └──────────┬──────────┘  │
+              │   clients events                              │ stream       │
+              │   ┌─────────┐    ┌───────────────────────────┘              │
+              │   │ nginx   │◄───┘ rtmp://rtmp:1935/live/playerA|B         │
+              │   │ RTMP    │                                               │
+              │   │ :1935   │                                               │
+              │   └─────────┘                                               │
+              └───────────────────────────────┬──────────────────────────────┘
+                                              ▼
+                                       Twitch / YouTube
 ```
 
-### Qui stream vers où ?
+### Qui fait quoi ?
 
-| Machine | Rôle | Stream vers |
-|---------|------|-------------|
-| **Joueur A** | Envoie son POV | → **Machine régie** (pas Twitch directement, sauf si vous voulez un double stream) |
-| **Joueur B** | Envoie son POV | → **Machine régie** |
-| **Machine régie** | Mixage + régie auto | → **Twitch / YouTube** (stream public) |
+| Composant | OS | Rôle |
+|-----------|-----|------|
+| **LoLAutoDirectorClient.exe** | Windows | Lit l'API LoL locale · affiche events · relay vers VPS |
+| **OBS joueur** | Windows | Capture POV → push RTMP vers le VPS |
+| **director** (Docker) | Linux | API + régie (scores, stratégies, logs) |
+| **nginx-rtmp** (Docker) | Linux | Ingest 2 flux vidéo |
+| **Caddy** (Docker) | Linux | HTTPS + proxy API clients |
+| **OBS régie** | Linux | Mix + switch caméra + stream Twitch |
 
-Les joueurs **n’envoient pas** leur flux directement sur la chaîne finale (sauf choix volontaire de double diffusion). L’OBS central sur la machine régie est la **seule sortie publique**.
-
----
-
-## Prérequis
-
-- **Windows** sur la machine régie (le .exe est prévu pour Windows)
-- **Python 3.10+** si lancement en source (`pip install -r requirements.txt`)
-- **OBS Studio** sur la machine régie (WebSocket v5 activé)
-- **League of Legends** sur chaque PC joueur (client agent) ou spectateur sur la régie (mode legacy)
-- Un moyen d’**ingérer les 2 flux vidéo** des joueurs dans l’OBS central
+L'OBS des joueurs **n'est pas piloté** par le programme — seul l'OBS **central** sur le VPS l'est.
 
 ---
 
-## Architecture client / serveur (recommandée)
+## Démarrage rapide
 
-| Composant | Commande | Où |
-|-----------|----------|-----|
-| **Client agent** | `python client_main.py` | PC joueur A et B |
-| **Serveur régie** | `python server_main.py` | VPS / machine régie |
-| **Director GUI** (legacy) | `python main.py` | Tout-en-un local |
-
-Le **client** lit l’API LoL locale, affiche les events (**standalone**, sans serveur), et peut **relayer** vers le serveur avec un token Bearer.
-
-Le **serveur** agrège les events A+B, pilote OBS central, stream Twitch.
-
-Voir **[CLIENT_SERVER.md](CLIENT_SERVER.md)** pour le setup détaillé (token, API, VPS).
-
-### Serveur Linux (Docker)
+### 1. Serveur VPS (Linux)
 
 ```bash
-cp .env.example .env
+git clone https://github.com/RajPorus19/LolCamSwitcher.git
+cd LolCamSwitcher
+cp .env.example .env          # définir LOL_DIRECTOR_API_TOKEN
 docker compose up -d
 ```
 
-Guide : **[docker/DOCKER.md](docker/DOCKER.md)** — nginx-rtmp + director + Caddy.
+→ Guide complet : **[docker/DOCKER.md](docker/DOCKER.md)**
 
-Clients Windows : **`LoLAutoDirectorClient.exe`** (`build-client.bat`).
+### 2. Clients joueurs (Windows)
 
----
+→ Fiches détaillées joueur A/B, token, OBS : **[SETUP.md](SETUP.md)** (étapes 4–6)
 
-## Mode legacy : API locale sur la régie
-
-## Limitation actuelle : API événements LoL
-
-LoL Auto Director lit aujourd’hui la **Live Client Data API** de Riot :
-
-```
-https://127.0.0.1:2999
-```
-
-Cette API n’est accessible que sur **le PC où tourne un client LoL connecté à la partie**. Elle ne peut pas lire directement le client LoL d’un joueur distant.
-
-### Conséquence pour 2 joueurs sur 2 réseaux
-
-| Situation | Fonctionne ? |
-|-----------|--------------|
-| **Client agent** sur chaque PC + serveur VPS | **Oui — recommandé** |
-| Régie + **client LoL spectateur** de la même game | Oui (legacy) |
-| Régie sans client LoL, joueurs distants seulement | Non |
-
----
-
-## Guide de setup complet
-
-### Étape 1 — Flux vidéo des joueurs vers la régie
-
-Chaque joueur configure **son OBS local** uniquement pour **envoyer** son POV à la régie. L’OBS du joueur n’est **pas** contrôlé par LoL Auto Director.
-
-#### Option A — RTMP vers un serveur sur la machine régie (classique)
-
-1. Sur la machine régie, installer un serveur RTMP :
-   - [MediaMTX](https://github.com/bluenviron/mediamtx) (simple, gratuit)
-   - ou nginx-rtmp, ou Owncast en mode ingest
-
-2. Exposer les URLs d’ingest :
-   ```
-   Joueur A → rtmp://IP_REGIE:1935/live/joueurA
-   Joueur B → rtmp://IP_REGIE:1935/live/joueurB
-   ```
-
-3. Ouvrir les ports sur la box de la régie (1935 TCP, ou tunnel VPN si pas d’IP publique).
-
-4. Chaque joueur dans OBS → **Paramètres → Stream** :
-   - Service : Custom
-   - Serveur : l’URL RTMP ci-dessus
-   - Clé : (selon config serveur)
-
-#### Option B — VDO.ninja / OBS Ninja (sans serveur RTMP)
-
-Pratique quand les joueurs n’ont pas d’IP fixe ou derrière NAT strict.
-
-1. Joueur A génère un lien push sur [vdo.ninja](https://vdo.ninja/) et OBS le capture (Browser Source ou outil dédié).
-2. Joueur B fait pareil.
-3. Sur l’OBS régie, ajouter deux **Browser Source** (ou Media Source) avec les liens **view** de chaque joueur.
-
-#### Option C — SRT / NDI (réseau local ou VPN)
-
-Si les joueurs sont sur un **VPN commun** (Tailscale, ZeroTier, Hamachi…) :
-- SRT caller → listener sur la régie
-- ou NDI si même LAN virtuel
-
-#### IP publique / NAT
-
-Si la régie n’a pas d’IP publique :
-- Utiliser **Tailscale** ou **ZeroTier** : les joueurs streament vers l’IP virtuelle du nœud régie.
-- Ou VDO.ninja (Option B) qui traverse le NAT via WebRTC.
-
----
-
-### Étape 2 — OBS central sur la machine régie
-
-Créer **exactement 3 scènes** (noms par défaut attendus par le programme) :
-
-| Scène OBS | Contenu |
-|-----------|---------|
-| `PLAYER_A` | Flux vidéo du joueur A (Media Source RTMP, Browser VDO.ninja, etc.) |
-| `PLAYER_B` | Flux vidéo du joueur B |
-| `SPLIT` | Les deux flux côte à côte (layout 50/50 ou picture-in-picture) |
-
-**Activer OBS WebSocket v5** :
-
-1. OBS → **Outils → WebSocket Server Settings**
-2. Cocher **Enable WebSocket server**
-3. Port : `4455` (défaut)
-4. Définir un mot de passe (recommandé)
-5. Version : **v5**
-
-La sortie stream (Twitch/YouTube) se configure **uniquement sur cet OBS régie**, pas sur les OBS des joueurs.
-
----
-
-### Étape 3 — Client LoL sur la machine régie
-
-1. Lancer League of Legends sur la **machine régie**.
-2. Rejoindre la partie en **spectateur** (ou y jouer si la régie héberge un compte dans la game).
-3. Vérifier que l’API répond (dans un navigateur sur la régie) :
-   ```
-   https://127.0.0.1:2999/liveclientdata/gamestats
-   ```
-   *(certificat auto-signé : accepter l’avertissement ou ignorer en HTTPS)*
-
-4. Noter les **noms d’invocateur exacts** (Riot ID) des joueurs A et B tels qu’affichés dans la partie.
-
----
-
-### Étape 4 — Lancer LoL Auto Director
+Télécharger **`LoLAutoDirectorClient.exe`** depuis [Releases](https://github.com/RajPorus19/LolCamSwitcher/releases) ou :
 
 ```bat
-pip install -r requirements.txt
-python main.py
+build-client.bat
 ```
 
-Ou lancer `dist\LoLAutoDirector.exe` après compilation (`build.bat`).
+| Champ client | Joueur A | Joueur B |
+|--------------|----------|----------|
+| Slot | A | B |
+| URL serveur | `http://IP_VPS` | idem |
+| Token | `LOL_DIRECTOR_API_TOKEN` | idem |
+| Relay | ✓ | ✓ |
 
-Dans l’interface :
+### 3. RTMP (OBS joueur)
 
-| Champ | Valeur |
-|-------|--------|
-| **Joueur A (Riot)** | Nom invocateur exact du joueur A |
-| **Joueur B (Riot)** | Nom invocateur exact du joueur B |
-| **OBS host** | `localhost` (OBS est sur la même machine que la régie) |
-| **OBS port** | `4455` |
-| **Mot de passe OBS** | Celui défini dans OBS WebSocket |
-| **Stratégie de switch** | Voir section stratégies |
-| **Délai avant action** | Offset replay (ex. `3` s → kill à 20:00, focus dès 19:57) |
+| Joueur | URL stream |
+|--------|------------|
+| A | `rtmp://IP_VPS:1935/live/playerA` |
+| B | `rtmp://IP_VPS:1935/live/playerB` |
 
-Puis :
+---
 
-1. **Connecter OBS**
-2. **Démarrer** le moteur
-3. Activer **Mode automatique**
+## Modes d'utilisation
 
-Le statut en bas affiche `OBS ✓ | LoL ✓ | AUTO` quand tout est OK.
+| Mode | Commande | Usage |
+|------|----------|-------|
+| **Client agent** | `LoLAutoDirectorClient.exe` | PC joueur — events + relay |
+| **Serveur Docker** | `docker compose up -d` | VPS Linux — régie + RTMP |
+| **Director GUI** (legacy) | `LoLAutoDirector.exe` / `main.py` | Tout-en-un local Windows |
+
+| Mode client | Serveur | Stream Twitch |
+|-------------|---------|---------------|
+| Client standalone | ✗ | ✗ (events only) |
+| Client + serveur Docker | ✓ | ✓ |
+| Director GUI local | local | ✓ (1 machine) |
 
 ---
 
@@ -233,109 +116,44 @@ Le statut en bas affiche `OBS ✓ | LoL ✓ | AUTO` quand tout est OK.
 
 | Stratégie | Comportement |
 |-----------|--------------|
-| **Score (priorité auto)** | Bascule selon scores d’intérêt (kill +100, objectif +120…), priorité des events, split si 2 gros plays proches |
-| **Joueur principal** | Caméra sur A (ou B) en permanence ; bascule sur l’autre **seulement** quand il fait une action, puis retour au principal |
-| **Dual (alternance)** | Départ aléatoire A ou B ; reste sur le joueur actif jusqu’à ce que l’autre fasse une action |
+| **Score** | Priorité kills/objectifs + split si 2 gros plays proches |
+| **Joueur principal** | Focus A (ou B), bascule temporaire sur l'autre |
+| **Dual** | Alternance : reste sur le joueur actif jusqu'à l'action de l'autre |
 
-**Split screen** : si les deux joueurs ont un event majeur (kill, objectif) à moins de 5 s d’écart → scène `SPLIT` pendant 8 s, puis retour au joueur le plus intéressant.
-
----
-
-## Paramètres de timing
-
-| Paramètre | Défaut | Description |
-|-----------|--------|-------------|
-| Délai avant action | 3 s | Offset « replay instantané » : la régie remonte avant l’event |
-| Focus post-event | 12 s | Durée de focus après l’event |
-| Split screen | 8 s | Durée de l’écran partagé |
-
-Exemple : kill A à **20:00**, délai 3 s → focus A de **19:57** à **20:12**.
+**Replay instantané** : délai configurable (défaut −3 s) — kill à 20:00 → focus dès 19:57.
 
 ---
 
-## OBS des joueurs (chez eux) — résumé
+## Documentation
 
-Chaque joueur configure **son propre OBS** ainsi :
-
-```
-Capture du jeu (Window Capture / Game Capture)
-        ↓
-Encodeur (x264 / NVENC — bitrate adapté à l’upload)
-        ↓
-Sortie Stream → URL de la machine régie (RTMP / SRT / VDO.ninja)
-```
-
-- **Pas** de scènes PLAYER_A / PLAYER_B chez le joueur
-- **Pas** de connexion WebSocket OBS vers LoL Auto Director
-- Bitrate upload conseillé : **2500–6000 kbps** par joueur selon connexion
-- Résolution : 720p60 ou 1080p30 pour limiter la bande passante
+| Document | Contenu |
+|----------|---------|
+| **[SETUP.md](SETUP.md)** | **Guide complet** — token, OBS joueur, OBS régie, fiches A/B |
+| [CLIENT_SERVER.md](CLIENT_SERVER.md) | Schémas, API, comparaison des modes |
+| [docker/DOCKER.md](docker/DOCKER.md) | Compose, ports, OBS régie, HTTPS |
+| [TESTING.md](TESTING.md) | Tester events sans stream |
+| [CHANGELOG.md](CHANGELOG.md) | Versions |
 
 ---
 
-## Checklist avant le live
+## Tests (sans stream)
 
-- [ ] Serveur ingest ou liens VDO.ninja testés (A et B visibles sur la régie)
-- [ ] 3 scènes OBS régie créées : `PLAYER_A`, `PLAYER_B`, `SPLIT`
-- [ ] WebSocket OBS v5 activé, mot de passe configuré
-- [ ] Client LoL spectateur lancé sur la machine régie, API `127.0.0.1:2999` OK
-- [ ] Noms Riot A et B saisis correctement dans LoL Auto Director
-- [ ] Test avec les boutons **Test Kill A / B / Split** dans l’interface
-- [ ] Stream final régie configuré vers Twitch/YouTube
-- [ ] Stratégie et délai avant action choisis
-
----
-
-## Compilation Windows (.exe)
+Practice Tool + client ou script sonde — voir **[TESTING.md](TESTING.md)**.
 
 ```bat
-build.bat
+python scripts/test_live_events.py --player-a "TonPseudo" --watch
 ```
 
-Exécutable produit : `dist\LoLAutoDirector.exe`
-
 ---
 
-## Dépannage
+## Builds Windows
 
-| Problème | Cause probable | Solution |
-|----------|----------------|----------|
-| `LoL ✗` | Pas de client LoL sur la régie | Lancer LoL et spectate la partie |
-| `OBS ✗` | WebSocket désactivé ou mauvais mot de passe | Vérifier OBS → WebSocket v5 |
-| Events A/B inversés | Noms invocateur incorrects | Vérifier Riot ID exact (casse) |
-| Pas de switch | Mode auto désactivé | Cocher **Mode automatique** |
-| Flux noir dans OBS | Ingest pas reçu | Tester URL RTMP / VDO.ninja |
-| Joueur distant, pas d’events | API locale uniquement | Spectate la game sur la régie |
+| Script | Produit | Cible |
+|--------|---------|-------|
+| `build-client.bat` | `LoLAutoDirectorClient.exe` | **PC joueurs** |
+| `build.bat` | `LoLAutoDirector.exe` | Director GUI local (legacy) |
 
----
-
-## Sécurité / Vanguard
-
-- Aucune injection, aucune lecture mémoire
-- Uniquement **Live Client Data API** (Riot) + **OBS WebSocket v5**
-- Compatible Vanguard : l’API Live Client est officiellement exposée par le client LoL
-
----
-
-## Tests & releases
-
-### Tester la détection des events LoL (sans stream)
-
-Guide complet : **[TESTING.md](TESTING.md)** — **aucun OBS, aucun stream requis**, Practice Tool suffit.
-
-Résumé :
-
-1. Practice Tool → vérifier `https://127.0.0.1:2999/liveclientdata/gamestats`
-2. `python scripts/test_live_events.py --player-a "TonPseudo" --watch`
-3. Jouer (dégâts / mort / kill bot) → events en direct dans le terminal
-4. Ou lancer l’exe → **Démarrer** → `LoL ✓` + **Dernier événement** (ignore `OBS ✗`)
-
-### Télécharger l’exécutable Windows
-
-Releases : **[github.com/RajPorus19/LolCamSwitcher/releases](https://github.com/RajPorus19/LolCamSwitcher/releases)**
-
-Asset : `LoLAutoDirector.exe` (build automatique à chaque tag `v*`).
-
-Version actuelle : **1.0.0** — voir [CHANGELOG.md](CHANGELOG.md).
+Le **serveur** tourne sous **Docker/Linux** — pas de `.exe` serveur.
 
 ---
 
@@ -343,19 +161,40 @@ Version actuelle : **1.0.0** — voir [CHANGELOG.md](CHANGELOG.md).
 
 ```
 lol_auto_director/
-├── director/     # scoring, priorités, stratégies, timeline
-├── lol/          # API Riot Live Client + types d’events
-├── buffer/       # buffer temporel replay
-├── obs/          # contrôleur OBS WebSocket v5
-├── gui/          # interface PySide6
-└── engine.py     # orchestration
-main.py           # point d’entrée
+├── client/          # agent Windows (events + relay)
+├── server/          # API FastAPI (Linux)
+├── director/        # scoring, stratégies, timeline
+├── lol/             # Riot Live Client API
+├── obs/             # OBS WebSocket v5
+└── session_log/     # logs par partie
+
+docker/
+├── director/        # Dockerfile serveur
+├── nginx-rtmp/      # ingest RTMP
+├── caddy/           # reverse proxy
+└── obs/             # OBS headless (optionnel)
+
+docker-compose.yml
+client_main.py       # entry client
+server_main.py       # entry serveur
+main.py              # entry legacy GUI
 ```
 
 ---
 
-## Évolutions prévues
+## Sécurité / Vanguard
 
-- **Agent relais** : petit programme sur le PC de chaque joueur qui forward les events vers la régie (pour ne plus nécessiter le spectateur local)
-- **API Spectator Riot** : récupération d’events sans client LoL ouvert
-- **Connexion OBS distante** : champ `OBS host` déjà prévu pour viser une IP autre que `localhost` si l’OBS régie tourne sur un autre PC du LAN
+- Aucune injection, aucune lecture mémoire
+- API Riot **Live Client** locale (port 2999) sur chaque PC joueur
+- API serveur protégée par **Bearer token**
+- Compatible Vanguard
+
+---
+
+## Releases
+
+**https://github.com/RajPorus19/LolCamSwitcher/releases**
+
+Version actuelle : **1.4.0** — voir [CHANGELOG.md](CHANGELOG.md).
+
+Assets : `LoLAutoDirectorClient.exe` (joueurs) · `LoLAutoDirector.exe` (legacy).

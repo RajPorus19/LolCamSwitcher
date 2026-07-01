@@ -1,14 +1,18 @@
 # LoL Auto Director — Linux regie stack (VPS)
 #
+# Clients Windows : LoLAutoDirectorClient.exe (build-client.bat)
+# Serveur Linux   : docker compose up -d
+#
 # Quick start:
-#   cp .env.example .env   # set LOL_DIRECTOR_API_TOKEN
+#   cp .env.example .env
 #   docker compose up -d
 #
 # With OBS headless (experimental):
+#   OBS_ENABLED=true in .env
 #   docker compose --profile full up -d
 #
-# Clients (Windows .exe): relay events to https://DOMAIN or http://VPS_IP
-# Players OBS:           rtmp://VPS_IP:1935/live/playerA  |  playerB
+# Player RTMP:  rtmp://VPS:1935/live/playerA  |  playerB
+# Client API:   http://VPS/  (Bearer token)
 
 services:
   director:

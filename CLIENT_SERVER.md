@@ -1,123 +1,195 @@
-# Client / Serveur — guide setup
+# Client / Serveur
 
-## Vue d'ensemble
+Guide setup pour l'architecture **distribuée** : clients Windows + serveur Linux Docker.
+
+> **Guide pas-à-pas complet** (token API, OBS joueur, OBS régie, fiches joueur) : **[SETUP.md](SETUP.md)**
+
+## Schéma complet
 
 ```
-PC Joueur A                         PC Joueur B
-  LoL + client_main.py                LoL + client_main.py
-       │  HTTPS events + heartbeat         │
-       └────────────┬──────────────────────┘
-                    ▼
-           VPS — server_main.py
-             ├─ API (Bearer token)
-             ├─ Director + OBS central
-             ├─ 2 flux RTMP (OBS joueurs)
-             └─ → Twitch
+┌──────────────── PC JOUEUR A (Windows) ─────────────────┐
+│  LoL  ←── Riot Live Client API (127.0.0.1:2999)        │
+│  LoLAutoDirectorClient.exe                             │
+│    • mode standalone : events visibles en local        │
+│    • mode relay : POST events + heartbeat ─────────────┼──┐
+│  OBS ── RTMP ──────────────────────────────────────────┼──┼──┐
+└────────────────────────────────────────────────────────┘  │  │
+                                                              │  │
+┌──────────────── PC JOUEUR B (Windows) ─────────────────┐  │  │
+│  (identique, slot B)                                    │  │  │
+└─────────────────────────────────────────────────────────┘  │  │
+                                                             │  │
+         ┌───────────────────────────────────────────────────┘  │
+         │  HTTPS  Authorization: Bearer TOKEN                   │
+         │  POST /api/v1/events  ·  POST /api/v1/heartbeat       │
+         ▼                                                       │
+┌──────────────── VPS Linux (docker compose) ──────────────────┼──┘
+│                                                              │
+│  ┌─────────┐      ┌────────────┐      ┌──────────────────┐  │
+│  │  Caddy  │─────►│  director  │─────►│ OBS régie        │  │
+│  │  :443   │      │  (Python)  │ WS   │ PLAYER_A/B/SPLIT │──┼──► Twitch
+│  └─────────┘      └────────────┘      └────────▲─────────┘  │
+│                                                 │            │
+│  ┌─────────┐   rtmp://rtmp:1935/live/playerA ──┘            │
+│  │ nginx   │◄── rtmp://rtmp:1935/live/playerB ◄──────────────┘
+│  │ RTMP    │      (flux OBS joueurs)
+│  │ :1935   │
+│  └─────────┘
+└──────────────────────────────────────────────────────────────
 ```
-
-- **Vidéo** : OBS de chaque joueur → RTMP vers le VPS (inchangé)
-- **Events** : client agent → API HTTP du serveur (nouveau)
 
 ---
 
-## 1. Serveur (VPS / régie)
+## Modèle de configuration (important)
 
-### Lancer (Linux Docker — recommandé)
+| Quoi | Où | Notes |
+|------|-----|-------|
+| Token API | `.env` VPS (`LOL_DIRECTOR_API_TOKEN`) | **Tu le choisis** — pas de panneau admin |
+| Joueur A / B | Client `.exe` (slot + pseudo) | Le serveur **ne** stocke pas une liste de joueurs |
+| Flux RTMP A | OBS joueur A | Clé fixe `playerA` |
+| Flux RTMP B | OBS joueur B | Clé fixe `playerB` |
+| Scènes régie | OBS VPS | `PLAYER_A`, `PLAYER_B`, `SPLIT` |
+| Twitch | OBS régie seulement | Les joueurs streament vers le VPS, pas Twitch |
+
+→ Détail opérationnel : **[SETUP.md](SETUP.md)** (étapes 2 à 7)
+
+---
+
+## 1. Serveur (VPS Linux)
+
+### Docker (recommandé)
 
 ```bash
-cp .env.example .env   # définir LOL_DIRECTOR_API_TOKEN
+cp .env.example .env
+# Obligatoire :
+#   LOL_DIRECTOR_API_TOKEN=un-secret-long-et-fixe
+#   OBS_ENABLED=false   (true si OBS régie configuré)
+
 docker compose up -d
 ```
 
-Guide complet : **[docker/DOCKER.md](docker/DOCKER.md)**
+Détails : **[docker/DOCKER.md](docker/DOCKER.md)**
 
-### Lancer (Python direct)
+### Python direct (dev)
 
 ```bash
-export LOL_DIRECTOR_API_TOKEN=mon-token-secret
+export LOL_DIRECTOR_API_TOKEN=mon-token
 export OBS_ENABLED=false
-python server_main.py --host 0.0.0.0 --port 8750 --require-token
+python server_main.py --require-token
 ```
 
-### Prérequis serveur
+### Ports firewall
 
-- **Linux VPS** avec Docker — voir **[docker/DOCKER.md](docker/DOCKER.md)**
-- **Windows** uniquement pour les **clients** (`.exe` via `build-client.bat`)
-- OBS Studio sur la régie (Docker profile `full`, ou installé sur l'hôte)
-- Port **1935** (RTMP) + **80/443** (API) ouverts
+| Port | Service | Public |
+|------|---------|--------|
+| 1935 | RTMP (OBS joueurs) | Oui |
+| 80 / 443 | API clients (Caddy) | Oui |
+| 8750 | Director (interne) | Non |
+| 4455 | OBS WebSocket | Non |
 
-### API
+---
 
-| Route | Auth | Body |
-|-------|------|------|
-| `GET /health` | Non | — |
-| `GET /api/v1/status` | Bearer | — |
-| `POST /api/v1/events` | Bearer | `{ "player": "A", "type": "kill", "time": 120.5 }` |
-| `POST /api/v1/heartbeat` | Bearer | `{ "player": "A", "game_time": 120.5, "lol_connected": true }` |
+## 2. API serveur
 
-Header obligatoire (sauf `/health`) :
+Toutes les routes `/api/v1/*` exigent :
 
 ```
-Authorization: Bearer mon-token-secret-long
+Authorization: Bearer <LOL_DIRECTOR_API_TOKEN>
+```
+
+| Route | Description |
+|-------|-------------|
+| `GET /health` | Public — sanity check |
+| `GET /api/v1/status` | Focus, scores, clients connectés |
+| `POST /api/v1/events` | `{ "player":"A", "type":"kill", "time":120.5 }` |
+| `POST /api/v1/heartbeat` | `{ "player":"A", "game_time":120.5, "lol_connected":true }` |
+
+### Test
+
+```bash
+curl http://VPS/health
+curl -H "Authorization: Bearer TOKEN" http://VPS/api/v1/status
 ```
 
 ---
 
-## 2. Client (PC joueur)
+## 3. Client Windows
 
-### Standalone — sans serveur
+### Standalone (sans serveur, sans stream)
 
-```bat
-python client_main.py
+```
+LoLAutoDirectorClient.exe
+  → Slot A ou B + pseudo Riot
+  → Démarrer
+  → events live dans la fenêtre (LoL ✓)
 ```
 
-- Entrer **Slot** (A ou B) et **Pseudo Riot**
-- **Démarrer** — les events s'affichent en live
-- Pas besoin d'URL serveur ni de token
+Aucun serveur requis. Idéal pour tester la détection events.
 
-### Relay — vers le serveur
+### Relay (production)
 
-1. Cocher **Relayer les events vers le serveur**
-2. URL : `http://IP_DU_VPS:8750`
-3. Token : le même que `LOL_DIRECTOR_API_TOKEN`
-4. **Tester connexion serveur** → doit afficher OK
-5. **Démarrer**
+| Champ | Exemple |
+|-------|---------|
+| Slot | `A` sur PC joueur A |
+| Pseudo Riot | nom exact in-game |
+| URL serveur | `https://regie.example.com` ou `http://IP_VPS` |
+| Token | même valeur que `.env` serveur |
+| Relayer | ✓ coché |
 
-Chaque event détecté localement est envoyé au serveur qui fait la régie OBS.
+**Tester connexion serveur** → OK → **Démarrer**
 
 ---
 
-## 3. Checklist live
+## 4. Vidéo RTMP (OBS joueur)
 
-- [ ] Serveur lancé, token noté
-- [ ] OBS régie connecté (WebSocket)
-- [ ] 2 flux RTMP visibles dans OBS régie
+Le client **ne gère pas** la vidéo. Chaque joueur configure OBS :
+
+| Joueur | Serveur RTMP | Clé stream |
+|--------|--------------|------------|
+| A | `rtmp://IP_VPS:1935/live` | `playerA` |
+| B | `rtmp://IP_VPS:1935/live` | `playerB` |
+
+Sur l'OBS régie (VPS), sources Media :
+- `rtmp://rtmp:1935/live/playerA`
+- `rtmp://rtmp:1935/live/playerB`
+
+---
+
+## 5. OBS régie (VPS)
+
+3 scènes obligatoires : `PLAYER_A`, `PLAYER_B`, `SPLIT`
+
+| Option | Description |
+|--------|-------------|
+| **Sans OBS** | `OBS_ENABLED=false` — API + scores, pas de switch caméra |
+| **Docker profile full** | `docker compose --profile full up -d` |
+| **OBS sur hôte Linux** | `OBS_ENABLED=true`, `OBS_HOST=172.17.0.1` |
+
+WebSocket OBS v5 — port 4455, mot de passe = `OBS_PASSWORD` dans `.env`.
+
+---
+
+## 6. Checklist live
+
+- [ ] `docker compose up -d` — services healthy
+- [ ] Token fixe dans `.env` + clients configurés
 - [ ] Client A : slot A, relay ON, LoL ✓
 - [ ] Client B : slot B, relay ON, LoL ✓
-- [ ] `GET /api/v1/status` montre `clients_connected: ["A", "B"]`
-
-### Test rapide status (curl)
-
-```bash
-curl -s http://VPS:8750/health
-curl -s -H "Authorization: Bearer TOKEN" http://VPS:8750/api/v1/status
-```
+- [ ] RTMP A et B visibles (HLS preview `:8080/hls/` optionnel)
+- [ ] OBS régie : 3 scènes + stream Twitch
+- [ ] `curl /api/v1/status` → `clients_connected: ["A","B"]`
 
 ---
 
-## 4. Sécurité
+## 7. Comparaison des modes
 
-- Utilisez un token long et aléatoire
-- En production, placez l'API derrière HTTPS (reverse proxy nginx/Caddy)
-- N'exposez que le port nécessaire au VPS
-
----
-
-## 5. Modes comparés
-
-| | Client seul | Client + serveur | main.py (legacy) |
-|--|-------------|------------------|------------------|
+| | Client seul | Client + Docker | Legacy GUI |
+|--|-------------|-----------------|------------|
+| OS joueur | Windows | Windows | Windows |
+| OS serveur | — | Linux VPS | Windows local |
 | Events live | ✓ | ✓ | ✓ |
-| Stream Twitch | ✗ | ✓ (via OBS régie) | ✓ |
-| LoL sur régie | ✗ | ✗ | Spectateur requis |
-| 2 PC distants | ✓ events | ✓ complet | ✗ |
+| 2 joueurs distants | ✓ | ✓ | ✗ |
+| Stream Twitch | ✗ | ✓ | ✓ |
+| LoL spectateur sur régie | ✗ | ✗ | requis |
+
+Legacy = `LoLAutoDirector.exe` / `main.py` (tout sur une machine).

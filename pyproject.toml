@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lol-auto-director"
 version = "1.4.0"
-description = "Automatic camera director for two-player League of Legends broadcasts"
+description = "LoL dual-POV auto director: Windows client agents relay live events; Linux Docker server (nginx-rtmp + API + OBS regie) for Twitch broadcast"
 requires-python = ">=3.10"
 dependencies = [
     "obsws-python>=1.7.0",

@@ -76,7 +76,7 @@ class ClientWindow(QMainWindow):
         srv_layout.addRow(self.chk_relay)
 
         self.txt_server_url = QLineEdit(self.config.server_url)
-        self.txt_server_url.setPlaceholderText("http://vps.example.com:8750")
+        self.txt_server_url.setPlaceholderText("http://203.0.113.50 ou https://regie.example.com")
         srv_layout.addRow("URL serveur :", self.txt_server_url)
 
         self.txt_token = QLineEdit(self.config.api_token)

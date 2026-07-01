@@ -1,32 +1,51 @@
 # Déploiement Docker — serveur Linux (VPS)
 
-Stack de production pour la **régie centrale**. Les **clients Windows** (`.exe`) tournent sur les PC joueurs.
+Stack de production pour la **régie centrale**.
 
-## Architecture
+> **Guide pas-à-pas** (token, OBS joueur, fiches A/B) : **[../SETUP.md](../SETUP.md)**  
+> Les **clients Windows** (`LoLAutoDirectorClient.exe`) tournent sur les PC joueurs.  
+> Ce compose **ne contient pas** le client — uniquement le serveur.
+
+## Architecture Docker
 
 ```
-                    Internet
-                       │
-         ┌─────────────┼─────────────┐
-         │             │             │
-    RTMP :1935    HTTPS :80/443   (Twitch via OBS)
-         │             │
-    ┌────▼────┐   ┌────▼────┐
-    │  rtmp   │   │  caddy  │──► director:8750 (API)
-    │ nginx   │   └─────────┘
-    └────┬────┘
-         │ rtmp://rtmp:1935/live/playerA|B
-    ┌────▼────┐  (profile full)
-    │   obs   │──► stream Twitch
-    └─────────┘
+                         Internet
+                            │
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+   Joueurs OBS         Clients .exe         Twitch
+   RTMP :1935          HTTPS :80/443
+        │                   │
+        ▼                   ▼
+┌───────────────────────────────────────────────────┐
+│                  docker compose                    │
+│                                                   │
+│  ┌──────────┐         ┌─────────────┐            │
+│  │  nginx   │         │    Caddy    │            │
+│  │  RTMP    │         │  reverse    │            │
+│  │  :1935   │         │  proxy :80  │            │
+│  └────┬─────┘         └──────┬──────┘            │
+│       │                      │                    │
+│       │ rtmp://rtmp/live/    POST /api/v1/events  │
+│       │ playerA | playerB    Bearer token         │
+│       ▼                      ▼                    │
+│  ┌──────────┐         ┌─────────────┐            │
+│  │   OBS    │◄────────│  director   │            │
+│  │  régie   │  WS v5  │  (Python)   │            │
+│  │  :4455   │         │  :8750      │            │
+│  └────┬─────┘         └─────────────┘            │
+│       │ profile: full (optionnel)                 │
+└───────┼───────────────────────────────────────────┘
+        ▼
+   Twitch / YouTube
 ```
 
-| Service | Rôle |
-|---------|------|
-| **director** | API events + régie (Python) |
-| **rtmp** | Ingest 2 flux OBS joueurs |
-| **caddy** | Reverse proxy HTTP(S) vers l'API |
-| **obs** | Optionnel (`--profile full`) — switch caméra + sortie Twitch |
+| Service | Image / build | Rôle |
+|---------|---------------|------|
+| **director** | `docker/director/Dockerfile` | API régie + logs |
+| **rtmp** | `alfg/nginx-rtmp` | Ingest flux OBS joueurs |
+| **caddy** | `caddy:2-alpine` | Proxy HTTP(S) API |
+| **obs** | `docker/obs/Dockerfile` | Optionnel — switch + stream |
 
 ## Démarrage rapide
 
@@ -44,104 +63,85 @@ curl http://localhost/health
 curl -H "Authorization: Bearer VOTRE_TOKEN" http://localhost/api/v1/status
 ```
 
-## Ports à ouvrir (firewall VPS)
+## Flux complets
+
+### Events (HTTP)
+
+```
+LoLAutoDirectorClient.exe (Windows)
+  → POST https://VPS/api/v1/events
+  → Authorization: Bearer TOKEN
+  → director → régie → OBS switch (si OBS_ENABLED=true)
+```
+
+### Vidéo (RTMP)
+
+```
+OBS joueur A → rtmp://VPS:1935/live/playerA
+OBS joueur B → rtmp://VPS:1935/live/playerB
+OBS régie    ← rtmp://rtmp:1935/live/playerA|B (réseau Docker)
+```
+
+## Ports firewall VPS
 
 | Port | Service | Public |
 |------|---------|--------|
-| 1935/tcp | RTMP ingest joueurs | Oui |
+| 1935/tcp | RTMP ingest | Oui |
 | 80, 443 | API clients (Caddy) | Oui |
-| 8750 | Director direct | Non (interne) |
+| 8080 | HLS preview (optionnel) | Optionnel |
+| 8750 | Director (interne) | Non |
 | 4455 | OBS WebSocket | Non |
-| 8080 | HLS preview | Optionnel |
 
 ## Configuration joueurs
 
-### Events (client Windows `.exe`)
+### Client Windows
 
-- URL serveur : `http://IP_VPS` ou `https://regie.tondomaine.com`
-- Token : valeur de `LOL_DIRECTOR_API_TOKEN` dans `.env`
-- Slot A sur PC joueur A, slot B sur PC joueur B
+| Champ | Joueur A | Joueur B |
+|-------|----------|----------|
+| Slot | A | B |
+| URL | `http://VPS` ou `https://domaine` | idem |
+| Token | `LOL_DIRECTOR_API_TOKEN` | idem |
+| Relay | ✓ | ✓ |
 
-### Vidéo (OBS joueur → RTMP)
+### OBS joueur (RTMP)
 
-| Joueur | URL RTMP |
-|--------|----------|
-| A | `rtmp://IP_VPS:1935/live/playerA` |
-| B | `rtmp://IP_VPS:1935/live/playerB` |
+| Joueur | URL |
+|--------|-----|
+| A | `rtmp://VPS:1935/live/playerA` |
+| B | `rtmp://VPS:1935/live/playerB` |
 
-Clé stream : laisser vide (ou `playerA` / `playerB` selon config OBS).
+## OBS régie
 
-## OBS régie (3 options)
+Scènes : `PLAYER_A`, `PLAYER_B`, `SPLIT`
 
-### Option 1 — Sans OBS (défaut)
+| Mode | Commande |
+|------|----------|
+| Sans OBS | `OBS_ENABLED=false` (défaut) |
+| Docker OBS | `OBS_ENABLED=true` + `docker compose --profile full up -d` |
+| OBS hôte Linux | `OBS_ENABLED=true`, `OBS_HOST=172.17.0.1` |
 
-`OBS_ENABLED=false` dans `.env` — API + logs + scores, pas de switch caméra Twitch.
+## HTTPS
 
-### Option 2 — OBS headless Docker (expérimental)
+1. DNS → VPS
+2. Décommenter bloc domaine dans `docker/caddy/Caddyfile`
+3. `docker compose restart caddy`
 
-```bash
-# .env : OBS_ENABLED=true
-docker compose --profile full up -d
-```
-
-Configurer manuellement dans OBS (via VNC si besoin) les scènes :
-- `PLAYER_A` → source Media `rtmp://rtmp:1935/live/playerA`
-- `PLAYER_B` → source Media `rtmp://rtmp:1935/live/playerB`
-- `SPLIT` → layout 50/50
-
-WebSocket OBS : port 4455, mot de passe = `OBS_PASSWORD` dans `.env`.
-
-### Option 3 — OBS sur l'hôte Linux (recommandé prod)
-
-Installer OBS sur le VPS, configurer les scènes, puis :
-
-```env
-OBS_ENABLED=true
-OBS_HOST=host.docker.internal   # Docker Desktop
-# ou IP de l'hôte sur le bridge docker, ex. 172.17.0.1
-```
-
-Ne pas lancer le service `obs` du compose.
-
-## HTTPS avec domaine
-
-1. Pointer `regie.example.com` vers le VPS
-2. Dans `.env` : `DOMAIN=regie.example.com`
-3. Décommenter le bloc HTTPS dans `docker/caddy/Caddyfile`
-4. `docker compose up -d caddy`
-
-Clients : `https://regie.example.com`
-
-## Logs régie
-
-Volume Docker `director-logs` → `/data/logs/game_*.log` dans le conteneur.
-
-```bash
-docker compose exec director ls -la /data/logs
-```
-
-## Commandes utiles
+## Logs
 
 ```bash
 docker compose logs -f director
-docker compose ps
-docker compose down
-docker compose build --no-cache director
-docker compose --profile full up -d   # avec OBS
+docker compose exec director ls /data/logs
 ```
 
-## Build client Windows (.exe)
+## Build client Windows (hors Docker)
 
 Sur une machine Windows :
 
 ```bat
 build-client.bat
+→ dist\LoLAutoDirectorClient.exe
 ```
 
-Produit : `dist\LoLAutoDirectorClient.exe`
+Variables : voir [.env.example](../.env.example).
 
-Le serveur Docker **ne nécessite pas** PySide6 ni PyInstaller.
-
-## Variables d'environnement (.env)
-
-Voir [.env.example](../.env.example).
+Guide opérationnel complet (token, OBS joueur, OBS régie) : **[SETUP.md](../SETUP.md)**.

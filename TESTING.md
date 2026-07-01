@@ -1,17 +1,18 @@
 # Guide de test — détection des events LoL (sans stream)
 
-Ce document sert **uniquement** à vérifier que LoL Auto Director détecte les **actions en live** (kills, morts, dégâts, objectifs…) via l’API Riot Live Client.
+Ce document sert **uniquement** à vérifier que le **client** détecte les **actions en live** via l'API Riot Live Client.
 
-## Ce qu’il faut / ce qu’il ne faut pas
+> Utilise **`LoLAutoDirectorClient.exe`** (Windows) ou `python client_main.py` — **pas besoin de serveur Docker ni de stream**.
+
+## Ce qu'il faut / ce qu'il ne faut pas
 
 | Requis | Pas requis |
 |--------|------------|
-| Windows (pour l’`.exe`) ou Python | **OBS** |
-| League of Legends lancé | **Stream Twitch / YouTube** |
-| Être **en partie** (Practice Tool suffit) | **RTMP, VDO.ninja, serveur ingest** |
-| Même PC pour LoL + le programme | **Deuxième joueur**, **réseau**, **scènes OBS** |
-| | **Connecter OBS** dans l’interface |
-| | **Mode automatique** (optionnel pour ce test) |
+| Windows + **`LoLAutoDirectorClient.exe`** (ou Python) | **Serveur VPS / Docker** |
+| League of Legends lancé | **OBS régie** |
+| Être **en partie** (Practice Tool suffit) | **Stream Twitch / RTMP** |
+| | **Token API**, **relay serveur** |
+| | **Deuxième joueur** |
 
 > **En résumé** : tu lances LoL, tu lances le programme, tu joues — tu observes les events remonter. Rien d’autre.
 
@@ -112,22 +113,21 @@ Ctrl+C pour arrêter.
 
 ---
 
-### Test 3 — Interface `.exe` ou GUI (sans OBS)
+### Test 3 — Client `.exe` (sans serveur)
 
-1. Télécharge `LoLAutoDirector.exe` depuis [Releases](https://github.com/RajPorus19/LolCamSwitcher/releases)  
-   *ou* `python main.py`
-2. Renseigne **Joueur A** = ton pseudo Riot (Joueur B peut rester vide pour un test solo)
-3. Clique **Démarrer**
-4. **Ignore** : Connecter OBS, mode automatique, stream
+1. Télécharge **`LoLAutoDirectorClient.exe`** depuis [Releases](https://github.com/RajPorus19/LolCamSwitcher/releases)  
+   *ou* `python client_main.py`
+2. Renseigne **Slot** (A ou B) + **Pseudo Riot**
+3. **Ne coche pas** « Relayer vers le serveur »
+4. Clique **Démarrer**
 
 Vérifie uniquement :
 
 | Élément UI | Attendu |
 |------------|---------|
-| Barre de statut | `LoL ✓` (OBS ✗ est **normal**) |
-| Temps de jeu | Avance en sync avec la partie |
-| Dernier événement | Se met à jour quand tu subis des dégâts, meurs, kill, etc. |
-| Score A | Monte quand un event te concerne |
+| Barre de statut | `LoL ✓` |
+| Serveur | `— (standalone)` — **normal** |
+| Liste events | Se remplit en jouant |
 
 **Actions à faire en Practice Tool** (sans co-joueur) :
 
@@ -146,7 +146,7 @@ Vérifie uniquement :
 | Inhibiteur | `inhibitor` |
 | Ace | `ace` |
 
-Si **Dernier événement** bouge → la détection live est **validée**. Tu peux fermer l’app.
+Si **Liste events** se remplit → la détection live est **validée**. Tu peux fermer l'app.
 
 ---
 
@@ -180,9 +180,10 @@ Coche tout — **aucun item OBS/stream** :
 - [ ] `test_live_events.py --watch` → `OK API disponible`
 - [ ] Au moins **1 event** remonte en jouant (`combat_nearby` minimum)
 - [ ] Event `✓ mappé` avec le bon pseudo
-- [ ] GUI / exe → `LoL ✓` + **Dernier événement** réactif
+- [ ] GUI / exe → `LoL ✓` + **Liste events** réactive
 
-**Si tout est coché → la détection live fonctionne.** Le setup stream/OBS est un sujet séparé ([README.md](README.md)).
+**Si tout est coché → la détection live fonctionne.**  
+Pour le setup production (serveur, token, OBS RTMP) → **[SETUP.md](SETUP.md)**.
 
 ---
 
@@ -196,7 +197,7 @@ Coche tout — **aucun item OBS/stream** :
 | `OBS ✗` en statut | OBS non lancé | **Normal pour ce test — ignore** |
 | exe ne voit pas LoL | Pas le même PC | LoL et l’exe sur **la même machine** |
 | `eventdata` vide | Début de partie | Joue 1–2 min, provoque des actions |
-| Antivirus bloque l’exe | PyInstaller | Exception pour `LoLAutoDirector.exe` |
+| Antivirus bloque l'exe | PyInstaller | Exception pour `LoLAutoDirectorClient.exe` |
 
 ---
 
@@ -249,17 +250,16 @@ Consultable en direct dans la GUI → **Journal de partie** (bouton **Live** ou 
 ## Récap visuel
 
 ```
-Practice Tool (LoL)
+Practice Tool (LoL) — PC Windows
        │
        │  API locale 127.0.0.1:2999
        ▼
 ┌──────────────────────────┐
-│  test_live_events.py     │  ← terminal, events en direct
-│  ou                      │
-│  LoLAutoDirector.exe     │  ← GUI, « Dernier événement »
+│  LoLAutoDirectorClient   │  ← events en direct (standalone)
+│  .exe ou client_main.py  │
 └──────────────────────────┘
        │
-       ✗ PAS de stream
-       ✗ PAS d'OBS
-       ✗ PAS de RTMP
+       ✗ PAS de Docker / VPS
+       ✗ PAS de RTMP / OBS régie
+       ✓ Optionnel : relay → VPS pour test intégration
 ```
