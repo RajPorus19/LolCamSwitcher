@@ -34,6 +34,21 @@ class TestRiotEventMapping:
         assert events[0].player == "A"
         assert any(e.player == "B" and e.type == EventType.ASSIST for e in events)
 
+    def test_solo_kill_without_assists(self):
+        api = _api()
+        events = api._map_riot_event(
+            {
+                "EventName": "ChampionKill",
+                "EventTime": 100.0,
+                "KillerName": "PlayerA",
+                "VictimName": "Enemy",
+                "Assisters": [],
+            }
+        )
+        assert len(events) == 1
+        assert events[0].type == EventType.SOLO_KILL
+        assert events[0].score == 120
+
     def test_multikill_triple(self):
         api = _api()
         events = api._map_riot_event(

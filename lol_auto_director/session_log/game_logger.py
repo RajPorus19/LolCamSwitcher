@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Callable, TextIO
 
 from lol_auto_director.director.priority import FocusTarget
-from lol_auto_director.director.timeline import FocusDecision
+from lol_auto_director.director.timeline import DirectorState, FocusDecision
 from lol_auto_director.lol.events import GameEvent
 
 
@@ -121,12 +121,46 @@ class GameSessionLogger:
         game_time: float,
         *,
         reason: str = "",
+        score_a: float = 0.0,
+        score_b: float = 0.0,
+        focus_start: float = 0.0,
+        focus_end: float = 0.0,
+        last_event: GameEvent | None = None,
     ) -> None:
         label = FOCUS_LABELS.get(focus, focus.value)
-        detail = f"Director focus → {label}"
+        detail = f"FOCUS {label}"
         if reason:
-            detail += f" ({reason})"
+            detail += f" | Reason: {reason}"
+        if focus_start > 0:
+            detail += (
+                f" | Window {format_game_time(focus_start)}→{format_game_time(focus_end)}"
+            )
+        detail += f" | Score A={score_a:.0f} B={score_b:.0f}"
+        if last_event:
+            detail += f" | Event: {last_event.type.value} ({last_event.player})"
         self._write("FOCUS", detail, game_time)
+
+    def log_director_decision(
+        self,
+        event: GameEvent,
+        state: DirectorState,
+        decision: FocusDecision | None,
+        game_time: float,
+    ) -> None:
+        """Structured esport-style decision block for debug mode."""
+        focus_label = FOCUS_LABELS.get(state.focus, state.focus.value)
+        lines = [
+            f"[{format_game_time(game_time)}]",
+            f"{event.type.value.upper()} détecté PLAYER_{event.player}",
+            "Score:",
+            f"PLAYER_A {state.score_a:.0f}",
+            f"PLAYER_B {state.score_b:.0f}",
+            "Decision:",
+            f"FOCUS {focus_label}",
+            "Reason:",
+            decision.reason if decision else event.reason_label,
+        ]
+        self._write("DECISION", "\n".join(lines), game_time)
 
     def log_camera_switch(
         self,

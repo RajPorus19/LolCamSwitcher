@@ -30,12 +30,16 @@ class StatusResponse(BaseModel):
 
     game_time: float
     focus: str
+    focus_start: float = 0.0
+    focus_end: float = 0.0
+    last_reason: str = ""
     score_a: float
     score_b: float
     last_event: str | None
     clients_connected: list[str]
     obs_connected: bool
     auto_mode: bool
+    debug_mode: bool = False
 
 
 class IngestResponse(BaseModel):

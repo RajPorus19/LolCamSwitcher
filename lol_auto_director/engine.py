@@ -47,8 +47,10 @@ class DirectorEngine:
         self.game_log = GameSessionLogger(logs_dir=logs_path, on_line=self.on_log_line)
         self.recorder = ReplayRecorder(
             pre_event_delay=self.config.pre_event_delay,
-            post_event_focus=self.config.post_event_focus,
+            post_event_focus=self.config.min_focus_time,
         )
+        self.recorder.director.min_focus_time = self.config.min_focus_time
+        self.recorder.director.scoreboard.decay_factor = self.config.score_decay_factor
         self.recorder.director.switch_strategy = self.config.switch_strategy
         self.recorder.director.main_player = self.config.main_player
         self.recorder.director.strategy_state.main_player = self.config.main_player
@@ -104,8 +106,16 @@ class DirectorEngine:
         switch_obs: bool,
     ) -> None:
         if focus != self._last_focus:
+            state = self.recorder.director.state
             self.game_log.log_focus_decision(
-                focus, game_time, reason=f"trigger={trigger}"
+                focus,
+                game_time,
+                reason=state.last_reason,
+                score_a=state.score_a,
+                score_b=state.score_b,
+                focus_start=state.focus_start,
+                focus_end=state.focus_end,
+                last_event=state.last_event,
             )
             self._last_focus = focus
 
@@ -153,6 +163,27 @@ class DirectorEngine:
     @property
     def obs_connected(self) -> bool:
         return self.obs.connected
+
+    @property
+    def focus_start(self) -> float:
+        return self.recorder.director.state.focus_start
+
+    @property
+    def focus_end(self) -> float:
+        return self.recorder.director.state.focus_end
+
+    @property
+    def last_reason(self) -> str:
+        return self.recorder.director.state.last_reason
+
+    @property
+    def debug_mode(self) -> bool:
+        return self.config.debug_mode
+
+    @debug_mode.setter
+    def debug_mode(self, value: bool) -> None:
+        self.config.debug_mode = value
+        self._notify()
 
     @property
     def switch_strategy(self) -> SwitchStrategy:
@@ -243,6 +274,13 @@ class DirectorEngine:
             decision = self.recorder.record_event(event, t)
             state = self.recorder.get_focus_at(t)
         self.game_log.log_event(event, decision, t)
+        if self.config.debug_mode:
+            self.game_log.log_director_decision(
+                event,
+                state,
+                decision,
+                t,
+            )
         self.game_log.log_info(f"Test event injected: {event_type.value} ({player})", t)
         self._apply_focus(
             state.focus,
@@ -258,6 +296,13 @@ class DirectorEngine:
             decision = self.recorder.record_event(event, event.time)
             state = self.recorder.get_focus_at(event.time)
         self.game_log.log_event(event, decision, event.time)
+        if self.config.debug_mode:
+            self.game_log.log_director_decision(
+                event,
+                state,
+                decision,
+                event.time,
+            )
         if state.focus != self._last_focus:
             self._apply_focus(
                 state.focus,
@@ -291,6 +336,20 @@ class DirectorEngine:
                 decision = self.recorder.record_event(event, game_time)
                 self.game_log.log_event(event, decision, game_time)
             state = self.recorder.get_focus_at(game_time)
+            if self.config.debug_mode:
+                for event in new_events:
+                    decision = next(
+                        (
+                            d
+                            for d in reversed(self.recorder.director.pending_decisions)
+                            if d.event is event
+                        ),
+                        None,
+                    )
+                    if decision:
+                        self.game_log.log_director_decision(
+                            event, state, decision, game_time
+                        )
 
         if state.focus != self._last_focus:
             self._apply_focus(

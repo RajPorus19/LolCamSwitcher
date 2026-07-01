@@ -53,6 +53,7 @@ def app_config_from_env() -> AppConfig:
         obs_password=os.environ.get("OBS_PASSWORD", ""),
         logs_dir=os.environ.get("LOGS_DIR", ""),
         auto_mode=_env_bool("AUTO_MODE", True),
+        debug_mode=_env_bool("DEBUG_MODE", False),
         split_screen_enabled=_env_bool("SPLIT_SCREEN_ENABLED", False),
         riot_poll_interval_ms=int(os.environ.get("RIOT_POLL_INTERVAL_MS", "500")),
     )

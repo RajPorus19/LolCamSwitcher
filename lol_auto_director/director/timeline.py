@@ -1,4 +1,4 @@
-"""Director timeline — focus windows with pre-event offset."""
+"""Director timeline — esport-style focus windows with pre-action offset and focus lock."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from lol_auto_director.config import (
-    POST_EVENT_FOCUS,
+    MIN_FOCUS_TIME,
     PRE_EVENT_DELAY,
     SPLIT_SCREEN_DURATION,
 )
@@ -35,8 +35,10 @@ class FocusDecision:
     event: GameEvent
     target: FocusTarget
     start_time: float  # event.time - PRE_EVENT_DELAY
-    end_time: float  # event.time + POST_EVENT_FOCUS
+    end_time: float  # start_time + MIN_FOCUS_TIME
     pre_event_delay: float = PRE_EVENT_DELAY
+    reason: str = ""
+    bypass_lock: bool = False
 
     @classmethod
     def from_event(
@@ -44,19 +46,22 @@ class FocusDecision:
         event: GameEvent,
         target: FocusTarget | None = None,
         pre_delay: float = PRE_EVENT_DELAY,
-        post_focus: float = POST_EVENT_FOCUS,
+        min_focus_time: float = MIN_FOCUS_TIME,
     ) -> FocusDecision:
         if target is None:
             player_target = (
                 FocusTarget.PLAYER_A if event.player == "A" else FocusTarget.PLAYER_B
             )
             target = player_target
+        start_time = event.time - pre_delay
         return cls(
             event=event,
             target=target,
-            start_time=event.time - pre_delay,
-            end_time=event.time + post_focus,
+            start_time=start_time,
+            end_time=start_time + min_focus_time,
             pre_event_delay=pre_delay,
+            reason=event.reason_label,
+            bypass_lock=event.is_critical,
         )
 
     def is_active_at(self, game_time: float) -> bool:
@@ -65,7 +70,7 @@ class FocusDecision:
     def __str__(self) -> str:
         return (
             f"{self.target.value} [{self.start_time:.0f}s → {self.end_time:.0f}s] "
-            f"← {self.event}"
+            f"← {self.event} ({self.reason})"
         )
 
 
@@ -110,6 +115,11 @@ class DirectorState:
     """Current director output state."""
 
     focus: FocusTarget = FocusTarget.PLAYER_A
+    focus_start: float = 0.0
+    focus_end: float = 0.0
+    last_reason: str = ""
+    score_a: float = 0.0
+    score_b: float = 0.0
     phase: FocusPhase = FocusPhase.IDLE
     active_decision: FocusDecision | None = None
     active_split: SplitDecision | None = None
@@ -123,11 +133,13 @@ class DirectorTimeline:
     """
     Manages the event buffer and produces camera decisions.
 
-    Instant replay logic: when event arrives at T, camera shows sequence from T - 3s.
+    Esport replay logic: kill at T → focus starts at T - PRE_EVENT_DELAY.
+    After a switch, stay on POV for at least MIN_FOCUS_TIME unless critical event.
     """
 
     pre_event_delay: float = PRE_EVENT_DELAY
-    post_event_focus: float = POST_EVENT_FOCUS
+    min_focus_time: float = MIN_FOCUS_TIME
+    post_event_focus: float = MIN_FOCUS_TIME
     split_duration: float = SPLIT_SCREEN_DURATION
     major_event_window: float = 5.0
     split_screen_enabled: bool = False
@@ -168,16 +180,12 @@ class DirectorTimeline:
         if self.split_screen_enabled and target == FocusTarget.SPLIT_SCREEN:
             self._maybe_create_split(event, score_a, score_b)
 
-        decision_target = (
-            target
-            if target != FocusTarget.SPLIT_SCREEN
-            else None
-        )
+        decision_target = target if target != FocusTarget.SPLIT_SCREEN else None
         decision = FocusDecision.from_event(
             event,
             target=decision_target,
             pre_delay=self.pre_event_delay,
-            post_focus=self.post_event_focus,
+            min_focus_time=self.min_focus_time,
         )
         self.pending_decisions.append(decision)
         return decision
@@ -215,11 +223,38 @@ class DirectorTimeline:
             )
         self.pending_splits.append(split)
 
+    def _should_apply_switch(self, decision: FocusDecision, game_time: float) -> bool:
+        if decision.target == self.state.focus:
+            return True
+        if decision.bypass_lock:
+            return True
+        if self.state.focus_end <= 0:
+            return True
+        if game_time >= self.state.focus_end:
+            return True
+        return False
+
+    def _commit_focus(
+        self,
+        focus: FocusTarget,
+        focus_start: float,
+        focus_end: float,
+        reason: str,
+    ) -> None:
+        self.state.focus = focus
+        self.state.focus_start = focus_start
+        self.state.focus_end = focus_end
+        self.state.last_reason = reason
+
     def evaluate(self, game_time: float) -> DirectorState:
         """Determine current focus at `game_time` (instant replay position)."""
         self.state.game_time = game_time
         self.state.pre_event_delay = self.pre_event_delay
         self.scoreboard.tick(game_time)
+
+        score_a, score_b = self.scoreboard.scores_at(game_time)
+        self.state.score_a = score_a
+        self.state.score_b = score_b
 
         active_split = None
         if self.split_screen_enabled:
@@ -228,7 +263,12 @@ class DirectorTimeline:
                 None,
             )
         if active_split:
-            self.state.focus = FocusTarget.SPLIT_SCREEN
+            self._commit_focus(
+                FocusTarget.SPLIT_SCREEN,
+                active_split.start_time,
+                active_split.end_time,
+                "SPLIT SCREEN",
+            )
             self.state.phase = FocusPhase.SPLIT
             self.state.active_split = active_split
             self.state.active_decision = None
@@ -239,14 +279,19 @@ class DirectorTimeline:
             None,
         )
         if active:
-            self.state.focus = active.target
+            if self._should_apply_switch(active, game_time):
+                self._commit_focus(
+                    active.target,
+                    active.start_time,
+                    active.end_time,
+                    active.reason,
+                )
             self.state.phase = FocusPhase.FOCUSED
             self.state.active_decision = active
             self.state.active_split = None
             return self.state
 
-        score_a, score_b = self.scoreboard.scores_at(game_time)
-        self.state.focus = resolve_idle_focus(
+        idle_focus = resolve_idle_focus(
             self.switch_strategy,
             self.strategy_state,
             self.events_a,
@@ -256,6 +301,15 @@ class DirectorTimeline:
             game_time,
             self.major_event_window,
             split_screen_enabled=self.split_screen_enabled,
+        )
+        if idle_focus != self.state.focus and self.state.focus_end > 0:
+            if game_time < self.state.focus_end:
+                idle_focus = self.state.focus
+        self._commit_focus(
+            idle_focus,
+            self.state.focus_start,
+            self.state.focus_end,
+            self.state.last_reason,
         )
         self.state.phase = FocusPhase.IDLE
         self.state.active_decision = None
@@ -269,7 +323,7 @@ class DirectorTimeline:
         return FocusDecision.from_event(
             self.state.last_event,
             pre_delay=self.pre_event_delay,
-            post_focus=self.post_event_focus,
+            min_focus_time=self.min_focus_time,
         )
 
     def reset(self) -> None:

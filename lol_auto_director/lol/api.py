@@ -128,7 +128,7 @@ class RiotLiveClientAPI:
 
             if damage_taken > max_hp * 0.08 and game_time > 0:
                 events.append(
-                    GameEvent(EventType.COMBAT_NEARBY, player_id, game_time, raw=p)
+                    GameEvent(EventType.HEAVY_TRADE, player_id, game_time, raw=p)
                 )
                 engage_last = self._engage_cooldown.get(player_id, 0.0)
                 if game_time - engage_last > 20.0:
@@ -224,7 +224,13 @@ class RiotLiveClientAPI:
 
         killer_id = self._resolve_player(killer)
         if killer_id:
-            events.append(GameEvent(EventType.KILL, killer_id, event_time, raw=raw))
+            assisters = raw.get("Assisters", [])
+            kill_type = (
+                EventType.SOLO_KILL
+                if not assisters
+                else EventType.KILL
+            )
+            events.append(GameEvent(kill_type, killer_id, event_time, raw=raw))
 
         victim_id = self._resolve_player(victim)
         if victim_id:

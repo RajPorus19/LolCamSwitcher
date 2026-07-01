@@ -23,8 +23,15 @@ class TestFocusDecision:
         event = _event(EventType.KILL, "A", 1200.0)  # 20:00
         decision = FocusDecision.from_event(event)
         assert decision.start_time == pytest.approx(1197.0)  # 19:57
-        assert decision.end_time == pytest.approx(1212.0)  # 20:12
+        assert decision.end_time == pytest.approx(1207.0)  # 19:57 + 10s lock
         assert decision.target == FocusTarget.PLAYER_A
+        assert decision.reason == "KILL"
+
+    def test_solo_kill_reason(self):
+        event = _event(EventType.SOLO_KILL, "A", 630.0)
+        decision = FocusDecision.from_event(event)
+        assert decision.reason == "SOLO KILL"
+        assert decision.bypass_lock is False
 
 
 class TestScoring:
@@ -33,10 +40,15 @@ class TestScoring:
         board.apply_event(_event(EventType.KILL, "A", 100.0))
         assert board.player_a.interest_score == 100
 
-    def test_decay(self):
-        board = ScoreBoard(decay_rate=2.0)
+    def test_solo_kill_adds_120(self):
+        board = ScoreBoard()
+        board.apply_event(_event(EventType.SOLO_KILL, "A", 100.0))
+        assert board.player_a.interest_score == 120
+
+    def test_exponential_decay(self):
+        board = ScoreBoard(decay_factor=0.8)
         board.apply_event(_event(EventType.KILL, "A", 100.0))
-        score, _ = board.scores_at(110.0)
+        score, _ = board.scores_at(101.0)
         assert score == pytest.approx(80.0)
 
 
@@ -72,11 +84,12 @@ class TestDirectorTimeline:
 
         state = director.evaluate(1197.0)
         assert state.focus == FocusTarget.PLAYER_A
+        assert state.last_reason == "KILL"
 
-        state = director.evaluate(1212.0)
+        state = director.evaluate(1205.0)
         assert state.focus == FocusTarget.PLAYER_A
 
-        state = director.evaluate(1300.0)
+        state = director.evaluate(1210.0)
         assert state.focus == FocusTarget.PLAYER_A  # score still favors A
 
     def test_custom_pre_event_delay(self):
@@ -86,6 +99,23 @@ class TestDirectorTimeline:
         state = director.evaluate(95.0)
         assert state.focus == FocusTarget.PLAYER_A
         assert state.pre_event_delay == 5.0
+
+    def test_focus_lock_blocks_early_switch(self):
+        director = DirectorTimeline(pre_event_delay=3.0, min_focus_time=10.0)
+        director.add_event(_event(EventType.KILL, "A", 100.0))
+        director.evaluate(100.0)
+        director.add_event(_event(EventType.KILL, "B", 105.0))
+        state = director.evaluate(105.0)
+        assert state.focus == FocusTarget.PLAYER_A
+
+    def test_critical_event_bypasses_focus_lock(self):
+        director = DirectorTimeline(pre_event_delay=3.0, min_focus_time=10.0)
+        director.add_event(_event(EventType.KILL, "A", 100.0))
+        director.evaluate(100.0)
+        director.add_event(_event(EventType.PENTA_KILL, "B", 105.0))
+        state = director.evaluate(105.0)
+        assert state.focus == FocusTarget.PLAYER_B
+        assert state.last_reason == "PENTAKILL"
 
     def test_replay_last(self):
         director = DirectorTimeline()
@@ -148,7 +178,7 @@ class TestSwitchStrategies:
             switch_strategy=SwitchStrategy.ONE_MAIN_PLAYER,
             main_player="A",
             pre_event_delay=3.0,
-            post_event_focus=12.0,
+            min_focus_time=10.0,
         )
         director.add_event(_event(EventType.KILL, "B", 100.0))
         assert director.evaluate(100.0).focus == FocusTarget.PLAYER_B

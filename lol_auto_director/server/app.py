@@ -101,12 +101,16 @@ def create_app(server_config: ServerConfig | None = None, app_config: AppConfig 
         return StatusResponse(
             game_time=eng.game_time,
             focus=eng.current_focus.value,
+            focus_start=eng.focus_start,
+            focus_end=eng.focus_end,
+            last_reason=eng.last_reason,
             score_a=eng.score_a,
             score_b=eng.score_b,
             last_event=str(last) if last else None,
             clients_connected=hub.connected_clients(),
             obs_connected=eng.obs_connected if obs_enabled else False,
             auto_mode=eng.auto_mode,
+            debug_mode=eng.debug_mode,
         )
 
     @app.post("/api/v1/events", response_model=IngestResponse, dependencies=[Depends(verify)])

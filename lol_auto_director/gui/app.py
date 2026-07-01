@@ -95,6 +95,33 @@ class DirectorWindow(QMainWindow):
 
         root.addWidget(status_group)
 
+        # Debug panel (esport director)
+        debug_group = QGroupBox("Debug régie")
+        debug_layout = QFormLayout(debug_group)
+
+        self.chk_debug = QCheckBox("Activer logs décision détaillés")
+        self.chk_debug.setChecked(self.config.debug_mode)
+        self.chk_debug.stateChanged.connect(self._on_debug_changed)
+        debug_layout.addRow("", self.chk_debug)
+
+        self.lbl_debug_focus = QLabel("—")
+        debug_layout.addRow("Focus actuel :", self.lbl_debug_focus)
+
+        self.lbl_debug_reason = QLabel("—")
+        debug_layout.addRow("Raison :", self.lbl_debug_reason)
+
+        self.lbl_debug_scores = QLabel("A: 0 | B: 0")
+        debug_layout.addRow("Scores instantanés :", self.lbl_debug_scores)
+
+        self.lbl_debug_window = QLabel("—")
+        debug_layout.addRow("Fenêtre focus :", self.lbl_debug_window)
+
+        self.lbl_debug_event = QLabel("—")
+        self.lbl_debug_event.setWordWrap(True)
+        debug_layout.addRow("Dernier événement :", self.lbl_debug_event)
+
+        root.addWidget(debug_group)
+
         # Connection settings
         conn_group = QGroupBox("Connexions")
         conn_layout = QFormLayout(conn_group)
@@ -288,6 +315,9 @@ class DirectorWindow(QMainWindow):
             split_screen_enabled=self.chk_split_beta.isChecked(),
         )
 
+    def _on_debug_changed(self, state: int) -> None:
+        self.engine.debug_mode = state == int(Qt.CheckState.Checked)
+
     def _on_split_beta_changed(self, state: int) -> None:
         enabled = state == int(Qt.CheckState.Checked)
         self.btn_test_split.setEnabled(enabled)
@@ -415,6 +445,23 @@ class DirectorWindow(QMainWindow):
         strategy = self.engine.switch_strategy
         self.lbl_strategy.setText(STRATEGY_LABELS.get(strategy, str(strategy)))
         self.combo_main_player.setEnabled(strategy == SwitchStrategy.ONE_MAIN_PLAYER)
+
+        focus_label = FOCUS_LABELS.get(focus, str(focus))
+        self.lbl_debug_focus.setText(focus_label)
+        self.lbl_debug_reason.setText(self.engine.last_reason or "—")
+        self.lbl_debug_scores.setText(
+            f"A: {self.engine.score_a:.0f} | B: {self.engine.score_b:.0f}"
+        )
+        fs, fe = self.engine.focus_start, self.engine.focus_end
+        if fs > 0:
+            mins, secs = int(fs // 60), int(fs % 60)
+            mine, sece = int(fe // 60), int(fe % 60)
+            self.lbl_debug_window.setText(
+                f"{mins:02d}:{secs:02d} → {mine:02d}:{sece:02d}"
+            )
+        else:
+            self.lbl_debug_window.setText("—")
+        self.lbl_debug_event.setText(str(last) if last else "—")
 
         obs_status = "OBS ✓" if self.engine.obs_connected else "OBS ✗"
         riot_status = "LoL ✓" if self.engine.riot_connected else "LoL ✗"
